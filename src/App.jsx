@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes, Link, useParams } from 'react-router-dom'
+import { NavLink, Route, Routes, Link, useLocation, useParams } from 'react-router-dom'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import Markdown from './components/Markdown'
 import { getProjects, saveProjects, getProjectBySlug } from './data/projects'
@@ -43,6 +43,12 @@ const t = {
     blogSortNewest: 'Plus récents',
     blogSortOldest: 'Plus anciens',
     blogNoResults: 'Aucun article trouvé.',
+    blogTagsLabel: 'Tags',
+    blogClearFilters: 'Réinitialiser',
+    blogPrev: 'Précédent',
+    blogNext: 'Suivant',
+    blogPage: 'Page',
+    relatedArticles: 'Articles similaires',
     readArticle: 'Lire l\'article →',
     testimonialsLabel: 'Témoignages',
     testimonialsTitle: 'Ce que disent les personnes avec qui je travaille',
@@ -139,6 +145,12 @@ const t = {
     blogSortNewest: 'Newest first',
     blogSortOldest: 'Oldest first',
     blogNoResults: 'No articles found.',
+    blogTagsLabel: 'Tags',
+    blogClearFilters: 'Reset',
+    blogPrev: 'Previous',
+    blogNext: 'Next',
+    blogPage: 'Page',
+    relatedArticles: 'Related articles',
     readArticle: 'Read article →',
     testimonialsLabel: 'Testimonials',
     testimonialsTitle: 'What people say about working with me',
@@ -214,6 +226,27 @@ const fmtDate = (dateStr, lang) =>
     month: 'long',
     year: 'numeric',
   })
+
+const SITE_URL = 'https://glardy.github.io/portfolio'
+const POSTS_PER_PAGE = 3
+
+function setMetaTag(attr, key, value) {
+  let tag = document.head.querySelector(`meta[${attr}="${key}"]`)
+  if (!tag) {
+    tag = document.createElement('meta')
+    tag.setAttribute(attr, key)
+    document.head.appendChild(tag)
+  }
+  tag.setAttribute('content', value)
+}
+
+function getPostTags(post, language) {
+  if (Array.isArray(post.tags) && post.tags.length > 0) {
+    return post.tags.map((tag) => String(tag).trim()).filter(Boolean)
+  }
+  const category = post.category?.[language] ?? post.category
+  return category ? [String(category)] : []
+}
 
 // ─── Field ────────────────────────────────────────────────────────────────────
 function Field({ label, name, value, onChange, textarea, rows = 4, mono, fullWidth }) {
@@ -426,9 +459,12 @@ function PostEditor({ initial, onSave, onCancel, tr }) {
   const empty = {
     title: '', titleEn: '', slug: '', date: new Date().toISOString().slice(0, 10),
     category: '', categoryEn: '', excerpt: '', excerptEn: '',
-    content: '', contentEn: '', published: false,
+    content: '', contentEn: '', tags: '', published: false,
   }
-  const [form, setForm] = useState(flattenForEditor(initial) || empty)
+  const [form, setForm] = useState(() => {
+    const flat = flattenForEditor(initial) || empty
+    return { ...flat, tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : (flat.tags || '') }
+  })
   const handle = (e) => {
     const { name, value, type, checked } = e.target
     setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
@@ -445,6 +481,7 @@ function PostEditor({ initial, onSave, onCancel, tr }) {
         <Field label={tr.adminFieldDate} name="date" value={form.date} onChange={handle} />
         <Field label={tr.adminFieldCategory} name="category" value={form.category} onChange={handle} />
         <Field label={tr.adminFieldCategoryEn} name="categoryEn" value={form.categoryEn} onChange={handle} />
+        <Field label={tr.adminFieldTags} name="tags" value={form.tags} onChange={handle} fullWidth />
         <Field label={tr.adminFieldExcerpt} name="excerpt" value={form.excerpt} onChange={handle} textarea rows={3} fullWidth />
         <Field label={tr.adminFieldExcerptEn} name="excerptEn" value={form.excerptEn} onChange={handle} textarea rows={3} fullWidth />
         <Field label={tr.adminFieldContent} name="content" value={form.content} onChange={handle} textarea rows={12} mono fullWidth />
@@ -460,7 +497,7 @@ function PostEditor({ initial, onSave, onCancel, tr }) {
           <button onClick={onCancel} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
             Annuler / Cancel
           </button>
-          <button onClick={() => onSave(composeFromFlat(form))} className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700">
+          <button onClick={() => onSave(composeFromFlat({ ...form, tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean) }))} className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700">
             {tr.adminSave}
           </button>
         </div>
@@ -676,6 +713,7 @@ function PostCard({ post, tr, lang }) {
   const title = post.title?.[lang] ?? post.title
   const excerpt = post.excerpt?.[lang] ?? post.excerpt
   const category = post.category?.[lang] ?? post.category
+  const tags = getPostTags(post, lang).slice(0, 3)
   return (
     <Link
       to={`/blog/${post.slug}`}
@@ -698,6 +736,13 @@ function PostCard({ post, tr, lang }) {
         )}
         <h3 className="text-base font-semibold text-zinc-900 leading-snug">{title}</h3>
         <p className="text-sm text-zinc-500 leading-relaxed flex-1">{excerpt}</p>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <span key={tag} className="text-xs bg-zinc-100 text-zinc-500 rounded-full px-2 py-0.5">{tag}</span>
+            ))}
+          </div>
+        )}
         <span className="text-xs font-medium text-zinc-900 group-hover:underline">{tr.readArticle}</span>
       </div>
     </Link>
@@ -946,6 +991,14 @@ function BlogPage({ tr, language }) {
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState(cats[0])
   const [sort, setSort] = useState('newest')
+  const [selectedTags, setSelectedTags] = useState([])
+  const [page, setPage] = useState(1)
+
+  const availableTags = useMemo(() => {
+    const tags = new Set()
+    posts.forEach((post) => getPostTags(post, language).forEach((tag) => tags.add(tag)))
+    return Array.from(tags).sort((a, b) => a.localeCompare(b))
+  }, [posts, language])
 
   const filtered = useMemo(() => {
     let list = posts
@@ -964,13 +1017,42 @@ function BlogPage({ tr, language }) {
         return title.toLowerCase().includes(q) || excerpt.toLowerCase().includes(q)
       })
     }
+    if (selectedTags.length > 0) {
+      list = list.filter((p) => {
+        const tags = getPostTags(p, language)
+        return selectedTags.some((tag) => tags.includes(tag))
+      })
+    }
     list = [...list].sort((a, b) =>
       sort === 'newest'
         ? new Date(b.date) - new Date(a.date)
         : new Date(a.date) - new Date(b.date)
     )
     return list
-  }, [posts, cat, search, sort, language, cats])
+  }, [posts, cat, search, sort, language, cats, selectedTags])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, cat, sort, selectedTags])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE))
+  const safePage = Math.min(page, totalPages)
+  const paginated = useMemo(() => {
+    const start = (safePage - 1) * POSTS_PER_PAGE
+    return filtered.slice(start, start + POSTS_PER_PAGE)
+  }, [filtered, safePage])
+
+  const toggleTag = (tag) => {
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }
+
+  const resetFilters = () => {
+    setSearch('')
+    setCat(cats[0])
+    setSort('newest')
+    setSelectedTags([])
+    setPage(1)
+  }
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
@@ -1008,13 +1090,55 @@ function BlogPage({ tr, language }) {
           </button>
         ))}
       </div>
-      {filtered.length === 0 ? (
+      <div className="mb-8">
+        <p className="text-xs font-medium uppercase tracking-widest text-zinc-400 mb-3">{tr.blogTagsLabel}</p>
+        <div className="flex flex-wrap gap-2">
+          {availableTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${
+                selectedTags.includes(tag)
+                  ? 'bg-zinc-900 text-white border-zinc-900'
+                  : 'border-zinc-200 text-zinc-500 hover:border-zinc-400'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {(search || cat !== cats[0] || sort !== 'newest' || selectedTags.length > 0) && (
+            <button onClick={resetFilters} className="text-xs font-medium rounded-full px-3 py-1.5 border border-zinc-200 text-zinc-500 hover:border-zinc-400">
+              {tr.blogClearFilters}
+            </button>
+          )}
+        </div>
+      </div>
+      {paginated.length === 0 ? (
         <p className="text-zinc-400 text-sm">{tr.blogNoResults}</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((post) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {paginated.map((post) => (
             <PostCard key={post.slug} post={post} tr={tr} lang={language} />
           ))}
+        </div>
+      )}
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between border-t border-zinc-200 pt-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className="text-sm border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 disabled:opacity-40"
+          >
+            {tr.blogPrev}
+          </button>
+          <span className="text-sm text-zinc-500">{tr.blogPage} {safePage} / {totalPages}</span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className="text-sm border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 disabled:opacity-40"
+          >
+            {tr.blogNext}
+          </button>
         </div>
       )}
     </main>
@@ -1030,6 +1154,22 @@ function PostDetailPage({ tr, language }) {
   const excerpt = language === 'fr' ? post.excerpt?.fr ?? post.excerpt : post.excerpt?.en ?? post.excerptEn ?? post.excerpt
   const category = language === 'fr' ? post.category?.fr ?? post.category : post.category?.en ?? post.categoryEn ?? post.category
   const content = language === 'fr' ? post.content?.fr ?? post.content : post.content?.en ?? post.contentEn ?? post.content
+  const currentTags = getPostTags(post, language)
+  const relatedPosts = useMemo(() => {
+    return getPosts()
+      .filter((item) => item.published && item.slug !== slug)
+      .map((item) => {
+        const itemCategory = item.category?.[language] ?? item.category
+        const itemTags = getPostTags(item, language)
+        const sharedTags = itemTags.filter((tag) => currentTags.includes(tag)).length
+        const score = (itemCategory === category ? 2 : 0) + sharedTags
+        return { item, score }
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score || new Date(b.item.date) - new Date(a.item.date))
+      .slice(0, 3)
+      .map(({ item }) => item)
+  }, [slug, language, category, currentTags])
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
       <Link to="/blog" className="text-sm text-zinc-400 hover:text-zinc-800 transition-colors mb-8 inline-block">
@@ -1042,9 +1182,26 @@ function PostDetailPage({ tr, language }) {
       </div>
       <h1 className="text-3xl font-bold text-zinc-900 mb-4">{title}</h1>
       <p className="text-zinc-500 text-lg leading-relaxed mb-10 border-l-2 border-zinc-200 pl-4">{excerpt}</p>
+      {currentTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          {currentTags.map((tag) => (
+            <span key={tag} className="text-xs bg-zinc-100 text-zinc-500 rounded-full px-3 py-1">{tag}</span>
+          ))}
+        </div>
+      )}
       <div className="prose prose-zinc max-w-none">
         <Markdown content={content} />
       </div>
+      {relatedPosts.length > 0 && (
+        <section className="mt-14 border-t border-zinc-200 pt-10">
+          <h2 className="text-xl font-semibold text-zinc-900 mb-5">{tr.relatedArticles}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {relatedPosts.map((relatedPost) => (
+              <PostCard key={relatedPost.slug} post={relatedPost} tr={tr} lang={language} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   )
 }
@@ -1370,9 +1527,121 @@ const navItems = [
 
 export default function App() {
   const [language, setLanguage] = useState('fr')
+  const location = useLocation()
   const tr = t[language]
 
   const toggleLang = () => setLanguage((l) => (l === 'fr' ? 'en' : 'fr'))
+
+  useEffect(() => {
+    document.documentElement.lang = language
+
+    const rawPath = location.pathname || '/'
+    const cleanPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/, '')
+    const canonicalPath = cleanPath === '/' ? '/' : cleanPath
+    const canonicalUrl = `${SITE_URL}${canonicalPath}`
+
+    const isHiddenPage = cleanPath.startsWith('/admin') || cleanPath.startsWith('/page_secrete')
+    let pageTitle = 'Portfolio | Actuariat & Finance'
+    let pageDescription = language === 'fr'
+      ? 'Portfolio professionnel pour un profil actuariat, risk management et data science.'
+      : 'Professional portfolio focused on actuarial science, risk management and data science.'
+    let ogType = 'website'
+    let structuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Person',
+      name: 'Votre Nom',
+      jobTitle: language === 'fr' ? 'Actuaire et Data Scientist' : 'Actuary and Data Scientist',
+      url: `${SITE_URL}/`,
+    }
+
+    if (cleanPath === '/') {
+      pageTitle = `${tr.heroTitle} | ${tr.badge}`
+      pageDescription = tr.heroText
+    } else if (cleanPath === '/portfolio') {
+      pageTitle = `${tr.portfolioTitle} | Portfolio`
+      pageDescription = language === 'fr'
+        ? 'Découvrez une sélection de projets en actuariat, risk management et data science.'
+        : 'Explore selected projects in actuarial science, risk management and data science.'
+    } else if (cleanPath.startsWith('/portfolio/')) {
+      const slug = decodeURIComponent(cleanPath.replace('/portfolio/', ''))
+      const project = getProjectBySlug(slug)
+      if (project) {
+        const title = project.title?.[language] ?? project.title
+        const summary = project.summary?.[language] ?? project.summary
+        pageTitle = `${title} | Portfolio`
+        pageDescription = summary
+        ogType = 'article'
+        structuredData = {
+          '@context': 'https://schema.org',
+          '@type': 'CreativeWork',
+          headline: title,
+          description: summary,
+          datePublished: project.date,
+          url: canonicalUrl,
+        }
+      }
+    } else if (cleanPath === '/blog') {
+      pageTitle = `${tr.blogTitle} | Blog`
+      pageDescription = language === 'fr'
+        ? 'Articles, analyses et retours d’expérience en actuariat et finance quantitative.'
+        : 'Articles, analyses and field insights on actuarial science and quantitative finance.'
+    } else if (cleanPath.startsWith('/blog/')) {
+      const slug = decodeURIComponent(cleanPath.replace('/blog/', ''))
+      const post = getPostBySlug(slug)
+      if (post) {
+        const title = post.title?.[language] ?? post.title
+        const excerpt = post.excerpt?.[language] ?? post.excerpt
+        pageTitle = `${title} | Blog`
+        pageDescription = excerpt
+        ogType = 'article'
+        structuredData = {
+          '@context': 'https://schema.org',
+          '@type': 'BlogPosting',
+          headline: title,
+          description: excerpt,
+          datePublished: post.date,
+          author: {
+            '@type': 'Person',
+            name: 'Votre Nom',
+          },
+          url: canonicalUrl,
+        }
+      }
+    } else if (cleanPath === '/contact') {
+      pageTitle = `${tr.contactTitle} | Contact`
+      pageDescription = tr.contactText
+    }
+
+    document.title = pageTitle
+    setMetaTag('name', 'description', pageDescription)
+    setMetaTag('name', 'robots', isHiddenPage ? 'noindex, nofollow' : 'index, follow')
+    setMetaTag('property', 'og:type', ogType)
+    setMetaTag('property', 'og:title', pageTitle)
+    setMetaTag('property', 'og:description', pageDescription)
+    setMetaTag('property', 'og:url', canonicalUrl)
+    setMetaTag('property', 'og:image', `${SITE_URL}/favicon.svg`)
+    setMetaTag('name', 'twitter:card', 'summary_large_image')
+    setMetaTag('name', 'twitter:title', pageTitle)
+    setMetaTag('name', 'twitter:description', pageDescription)
+    setMetaTag('name', 'twitter:image', `${SITE_URL}/favicon.svg`)
+
+    let canonical = document.head.querySelector('link[rel="canonical"]')
+    if (!canonical) {
+      canonical = document.createElement('link')
+      canonical.setAttribute('rel', 'canonical')
+      document.head.appendChild(canonical)
+    }
+    canonical.setAttribute('href', canonicalUrl)
+
+    let schema = document.head.querySelector('#dynamic-schema')
+    if (!schema) {
+      schema = document.createElement('script')
+      schema.setAttribute('type', 'application/ld+json')
+      schema.setAttribute('id', 'dynamic-schema')
+      document.head.appendChild(schema)
+    }
+    schema.textContent = JSON.stringify(structuredData)
+  }, [language, location.pathname, tr.badge, tr.blogTitle, tr.contactText, tr.contactTitle, tr.heroText, tr.heroTitle, tr.portfolioTitle])
 
   return (
     <>
