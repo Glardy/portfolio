@@ -50,6 +50,7 @@ const t = {
     blogPage: 'Page',
     relatedArticles: 'Articles similaires',
     readArticle: 'Lire l\'article →',
+    pwaInstall: 'Installer l’app',
     testimonialsLabel: 'Témoignages',
     testimonialsTitle: 'Ce que disent les personnes avec qui je travaille',
     testimonialsIntro: 'Des retours validés et publiés après modération.',
@@ -152,6 +153,7 @@ const t = {
     blogPage: 'Page',
     relatedArticles: 'Related articles',
     readArticle: 'Read article →',
+    pwaInstall: 'Install app',
     testimonialsLabel: 'Testimonials',
     testimonialsTitle: 'What people say about working with me',
     testimonialsIntro: 'Validated feedback published after moderation.',
@@ -1528,9 +1530,37 @@ const navItems = [
 export default function App() {
   const [language, setLanguage] = useState('fr')
   const location = useLocation()
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  const [canInstall, setCanInstall] = useState(false)
   const tr = t[language]
 
   const toggleLang = () => setLanguage((l) => (l === 'fr' ? 'en' : 'fr'))
+
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event) => {
+      event.preventDefault()
+      setDeferredPrompt(event)
+      setCanInstall(true)
+    }
+    const onAppInstalled = () => {
+      setDeferredPrompt(null)
+      setCanInstall(false)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    window.addEventListener('appinstalled', onAppInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', onAppInstalled)
+    }
+  }, [])
+
+  const installApp = async () => {
+    if (!deferredPrompt) return
+    deferredPrompt.prompt()
+    await deferredPrompt.userChoice
+    setDeferredPrompt(null)
+    setCanInstall(false)
+  }
 
   useEffect(() => {
     document.documentElement.lang = language
@@ -1677,6 +1707,14 @@ export default function App() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
+            {canInstall && (
+              <button
+                onClick={installApp}
+                className="hidden sm:inline-flex text-xs font-medium border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 hover:bg-zinc-50 transition-colors"
+              >
+                {tr.pwaInstall}
+              </button>
+            )}
             {/* Language toggle */}
             <button
               onClick={toggleLang}
