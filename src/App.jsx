@@ -1,571 +1,1103 @@
-﻿import { NavLink, Route, Routes, Link } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+﻿import { NavLink, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import Markdown from './components/Markdown'
+import { getProjects, saveProjects, getProjectBySlug } from './data/projects'
+import { getPosts, savePosts, getPostBySlug } from './data/posts'
 
-/* ─────────────────────────────────────────
-   DATA
-───────────────────────────────────────── */
-const navItems = [
-  { to: '/', label: { fr: 'Accueil', en: 'Home' } },
-  { to: '/portfolio', label: { fr: 'Portfolio', en: 'Portfolio' } },
-  { to: '/blog', label: { fr: 'Blog', en: 'Blog' } },
-  { to: '/contact', label: { fr: 'Contact', en: 'Contact' } },
-]
-
-const portfolioProjects = [
-  {
-    title: { fr: 'Tarification assurance', en: 'Insurance pricing model' },
-    category: { fr: 'Actuariat', en: 'Actuarial' },
-    summary: {
-      fr: 'Modélisation de portefeuille et analyse de solvabilité pour des scénarios de tarification plus robustes.',
-      en: 'Portfolio modeling and solvency analysis to improve pricing resilience and risk decision support.',
-    },
-    tags: ['Python', 'Risk', 'Data'],
-  },
-  {
-    title: { fr: 'Dashboard risk management', en: 'Risk management dashboard' },
-    category: { fr: 'Risk', en: 'Risk' },
-    summary: {
-      fr: 'Visualisation des indicateurs de risque clés et des alertes de crise avec un focus décisionnel.',
-      en: 'Visualization of key risk indicators and crisis triggers with a sharp decision-making focus.',
-    },
-    tags: ['Analytics', 'Finance', 'Tableau'],
-  },
-  {
-    title: { fr: 'Prédiction de défaillance', en: 'Default prediction' },
-    category: { fr: 'Data Science', en: 'Data Science' },
-    summary: {
-      fr: 'Étude prédictive pour identifier les signaux d instabilité et améliorer la qualité des décisions.',
-      en: 'Predictive study to detect early instability signals and improve decision quality.',
-    },
-    tags: ['ML', 'SQL', 'NLP'],
-  },
-]
-
-const blogPosts = [
-  {
-    id: 1,
-    title: { fr: 'Le risque est-il une contrainte ou un levier stratégique ?', en: 'Is risk a constraint or a strategic lever?' },
-    category: { fr: 'Actuariat', en: 'Actuarial' },
-    date: '2026-07-15',
-    excerpt: {
-      fr: 'Les organisations qui appréhendent le risque de manière proactive gagnent en résilience et en lisibilité.',
-      en: 'Organizations that anticipate risk more proactively become more resilient, measurable, and strategic.',
-    },
-  },
-  {
-    id: 2,
-    title: { fr: 'Comment la data science transforme la finance', en: 'How data science is reshaping finance' },
-    category: { fr: 'Data', en: 'Data' },
-    date: '2026-06-10',
-    excerpt: {
-      fr: 'Les modèles prédictifs aident à informer les décisions de portefeuille et d allocation de ressources.',
-      en: 'Predictive models are helping organizations improve portfolio decisions and smarter capital allocation.',
-    },
-  },
-  {
-    id: 3,
-    title: { fr: 'Solvabilité II et prise de décision stratégique', en: 'Solvency II and strategic decision-making' },
-    category: { fr: 'Finance', en: 'Finance' },
-    date: '2026-05-22',
-    excerpt: {
-      fr: 'Une lecture équilibrée entre contraintes réglementaires et dynamique de croissance durable.',
-      en: 'A balanced view between regulatory obligations and long-term sustainable growth ambition.',
-    },
-  },
-  {
-    id: 4,
-    title: { fr: 'Machine learning et détection de fraude en assurance', en: 'Machine learning for insurance fraud detection' },
-    category: { fr: 'Data', en: 'Data' },
-    date: '2026-04-18',
-    excerpt: {
-      fr: 'Panorama des méthodes de détection automatisée et de leur applicabilité au secteur assurantiel.',
-      en: 'Overview of automated detection methods and their applicability in the insurance sector.',
-    },
-  },
-  {
-    id: 5,
-    title: { fr: 'Modélisation des queues de distribution en actuariat', en: 'Tail risk modeling in actuarial science' },
-    category: { fr: 'Actuariat', en: 'Actuarial' },
-    date: '2026-03-05',
-    excerpt: {
-      fr: 'Approche théorique et pratique des distributions à queues épaisses pour la tarification extrême.',
-      en: 'Theoretical and practical approach to heavy-tail distributions for extreme risk pricing.',
-    },
-  },
-  {
-    id: 6,
-    title: { fr: 'Taux d intérêt bas : impact sur la gestion actif-passif', en: 'Low interest rates: impact on ALM' },
-    category: { fr: 'Finance', en: 'Finance' },
-    date: '2026-02-14',
-    excerpt: {
-      fr: 'Comment les compagnies d assurance adaptent leur stratégie d investissement dans un contexte de taux bas.',
-      en: 'How insurance companies adapt their investment strategy in a low interest rate environment.',
-    },
-  },
-]
+const ADMIN_PASSWORD = 'portfolio2026'
 
 const allCategories = {
   fr: ['Tous', 'Actuariat', 'Data', 'Finance'],
   en: ['All', 'Actuarial', 'Data', 'Finance'],
 }
 
-/* ─────────────────────────────────────────
-   TRANSLATIONS
-───────────────────────────────────────── */
-const translations = {
+const t = {
   fr: {
     langToggle: 'EN',
     ctaContact: 'Me contacter',
-    badge: 'Disponible pour des missions',
-    heroIntro: 'Actuaire — Risk Management — Data Science',
-    heroTitle: 'Je transforme les données en décisions financières sécurisées.',
-    heroText: 'Jeune professionnel spécialisé en actuariat et finance quantitative, j allier rigueur analytique et vision stratégique pour piloter des décisions plus robustes.',
+    badge: 'Actuaire & Data Scientist',
+    heroIntro: 'Bonjour, je suis',
+    heroTitle: 'Votre Nom',
+    heroText: 'Actuaire qualifié et data scientist, je transforme des données complexes en insights actionnables pour les secteurs de l\'assurance et de la finance.',
     primaryCta: 'Voir mes projets',
-    secondaryCta: 'Mon parcours',
-    stat1Val: '<30', stat1Label: 'ans',
-    stat2Val: 'Master', stat2Label: 'Actuariat & Finance',
-    stat3Val: '3', stat3Label: 'Domaines de spécialité',
+    secondaryCta: 'En savoir plus',
+    stat1Val: '<30',
+    stat1Label: 'ans',
+    stat2Val: 'Master',
+    stat2Label: 'Actuariat & Finance',
+    stat3Val: '3',
+    stat3Label: 'ans d\'expérience',
     aboutLabel: 'À propos',
-    aboutTitle: 'Un profil analytique orienté impact.',
-    aboutText: 'Titulaire d un master en actuariat et finance, je développe une expertise solide en modélisation quantitative, gestion des risques et analyse des données.',
-    aboutText2: 'Je recherche des missions à forte valeur analytique où la rigueur, la performance et la sécurité des décisions sont centrales.',
-    metric1: 'Modélisation', metric2: 'Analyse',
+    aboutTitle: 'Une expertise à l\'intersection des mathématiques et de la donnée',
+    aboutText: 'Diplômé d\'un Master en Actuariat, j\'ai développé une expertise solide en modélisation des risques, analyse statistique et machine learning appliqué aux problématiques assurantielles et financières.',
+    aboutText2: 'Mon approche combine rigueur mathématique et pragmatisme data pour produire des solutions robustes et explicables.',
+    metric1: 'Modélisation',
+    metric2: 'Analyse',
     portfolioLabel: 'Portfolio',
-    portfolioTitle: 'Projets récents',
-    readMore: 'Voir le projet',
+    portfolioTitle: 'Mes projets',
+    readMore: 'Voir le projet →',
     blogLabel: 'Blog',
     blogTitle: 'Articles & réflexions',
     blogSearch: 'Rechercher un article…',
-    blogFilterLabel: 'Catégorie',
-    blogSortLabel: 'Trier par date',
-    blogSortNewest: 'Plus récent',
-    blogSortOldest: 'Plus ancien',
+    blogSortNewest: 'Plus récents',
+    blogSortOldest: 'Plus anciens',
     blogNoResults: 'Aucun article trouvé.',
-    readArticle: 'Lire l article',
+    readArticle: 'Lire l\'article →',
     contactLabel: 'Contact',
-    contactTitle: 'Échangeons sur votre projet',
-    contactText: 'Je suis disponible pour des missions en actuariat, gestion des risques, data science et analyse financière.',
+    contactTitle: 'Travaillons ensemble',
+    contactText: 'Vous avez un projet, une question ou souhaitez simplement échanger ? N\'hésitez pas à me contacter.',
     email: 'votrenom@email.com',
     phone: '+33 6 00 00 00 00',
-    formName: 'Nom', formEmail: 'Email', formMessage: 'Message', formSubmit: 'Envoyer',
+    formName: 'Votre nom',
+    formEmail: 'Votre email',
+    formMessage: 'Votre message',
+    formSubmit: 'Envoyer le message',
+    backPortfolio: '← Retour au portfolio',
+    backBlog: '← Retour au blog',
+    notFound: 'Page introuvable',
+    notFoundBack: 'Retour à l\'accueil',
+    adminTitle: 'Administration',
+    adminLogout: 'Déconnexion',
+    adminProjects: 'Projets',
+    adminPosts: 'Articles',
+    adminNewProject: 'Nouveau projet',
+    adminNewPost: 'Nouvel article',
+    adminSave: 'Enregistrer',
+    adminDelete: 'Supprimer',
+    adminEdit: 'Modifier',
+    adminPublished: 'Publié',
+    adminDraft: 'Brouillon',
+    adminPasswordLabel: 'Mot de passe',
+    adminLoginBtn: 'Se connecter',
+    adminLoginError: 'Mot de passe incorrect.',
+    adminFieldTitle: 'Titre (FR)',
+    adminFieldTitleEn: 'Titre (EN)',
+    adminFieldExcerpt: 'Extrait (FR)',
+    adminFieldExcerptEn: 'Extrait (EN)',
+    adminFieldContent: 'Contenu (FR)',
+    adminFieldContentEn: 'Contenu (EN)',
+    adminFieldCategory: 'Catégorie (FR)',
+    adminFieldCategoryEn: 'Catégorie (EN)',
+    adminFieldDate: 'Date',
+    adminFieldSlug: 'Slug',
+    adminFieldTags: 'Tags (virgule)',
+    adminFieldSummary: 'Résumé (FR)',
+    adminFieldSummaryEn: 'Résumé (EN)',
+    adminConfirmDelete: 'Supprimer cet élément ?',
   },
   en: {
     langToggle: 'FR',
     ctaContact: 'Contact me',
-    badge: 'Open to opportunities',
-    heroIntro: 'Actuarial — Risk Management — Data Science',
-    heroTitle: 'I turn data into safer, sharper financial decisions.',
-    heroText: 'Young professional specialized in actuarial science and quantitative finance, combining analytical rigor and strategic thinking to support stronger decisions.',
-    primaryCta: 'See my work',
-    secondaryCta: 'My journey',
-    stat1Val: '<30', stat1Label: 'years old',
-    stat2Val: 'Master', stat2Label: 'Actuarial & Finance',
-    stat3Val: '3', stat3Label: 'Areas of expertise',
+    badge: 'Actuary & Data Scientist',
+    heroIntro: 'Hi, I\'m',
+    heroTitle: 'Your Name',
+    heroText: 'Qualified actuary and data scientist, I transform complex data into actionable insights for insurance and finance sectors.',
+    primaryCta: 'See my projects',
+    secondaryCta: 'Learn more',
+    stat1Val: '<30',
+    stat1Label: 'years old',
+    stat2Val: 'Master',
+    stat2Label: 'Actuarial & Finance',
+    stat3Val: '3',
+    stat3Label: 'years experience',
     aboutLabel: 'About',
-    aboutTitle: 'An analytical profile focused on impact.',
-    aboutText: 'With a master\'s degree in actuarial science and finance, I have built strong expertise in quantitative modeling, risk management and data analysis.',
-    aboutText2: 'I am looking for high-value analytical missions where rigor, performance and decision security are key priorities.',
-    metric1: 'Modeling', metric2: 'Analysis',
+    aboutTitle: 'Expertise at the intersection of mathematics and data',
+    aboutText: 'Graduate of a Master\'s in Actuarial Science, I have developed solid expertise in risk modeling, statistical analysis and machine learning applied to insurance and financial challenges.',
+    aboutText2: 'My approach combines mathematical rigor and data pragmatism to deliver robust, explainable solutions.',
+    metric1: 'Modeling',
+    metric2: 'Analysis',
     portfolioLabel: 'Portfolio',
-    portfolioTitle: 'Recent projects',
-    readMore: 'View project',
+    portfolioTitle: 'My projects',
+    readMore: 'View project →',
     blogLabel: 'Blog',
     blogTitle: 'Articles & insights',
     blogSearch: 'Search articles…',
-    blogFilterLabel: 'Category',
-    blogSortLabel: 'Sort by date',
     blogSortNewest: 'Newest first',
     blogSortOldest: 'Oldest first',
     blogNoResults: 'No articles found.',
-    readArticle: 'Read article',
+    readArticle: 'Read article →',
     contactLabel: 'Contact',
-    contactTitle: 'Let\'s discuss your project',
-    contactText: 'I am available for actuarial, risk management, data science and financial analysis opportunities.',
-    email: 'yourname@email.com',
+    contactTitle: 'Let\'s work together',
+    contactText: 'Have a project, a question, or just want to chat? Feel free to reach out.',
+    email: 'votrenom@email.com',
     phone: '+33 6 00 00 00 00',
-    formName: 'Name', formEmail: 'Email', formMessage: 'Message', formSubmit: 'Send',
+    formName: 'Your name',
+    formEmail: 'Your email',
+    formMessage: 'Your message',
+    formSubmit: 'Send message',
+    backPortfolio: '← Back to portfolio',
+    backBlog: '← Back to blog',
+    notFound: 'Page not found',
+    notFoundBack: 'Back to home',
+    adminTitle: 'Administration',
+    adminLogout: 'Log out',
+    adminProjects: 'Projects',
+    adminPosts: 'Posts',
+    adminNewProject: 'New project',
+    adminNewPost: 'New post',
+    adminSave: 'Save',
+    adminDelete: 'Delete',
+    adminEdit: 'Edit',
+    adminPublished: 'Published',
+    adminDraft: 'Draft',
+    adminPasswordLabel: 'Password',
+    adminLoginBtn: 'Log in',
+    adminLoginError: 'Incorrect password.',
+    adminFieldTitle: 'Title (FR)',
+    adminFieldTitleEn: 'Title (EN)',
+    adminFieldExcerpt: 'Excerpt (FR)',
+    adminFieldExcerptEn: 'Excerpt (EN)',
+    adminFieldContent: 'Content (FR)',
+    adminFieldContentEn: 'Content (EN)',
+    adminFieldCategory: 'Category (FR)',
+    adminFieldCategoryEn: 'Category (EN)',
+    adminFieldDate: 'Date',
+    adminFieldSlug: 'Slug',
+    adminFieldTags: 'Tags (comma)',
+    adminFieldSummary: 'Summary (FR)',
+    adminFieldSummaryEn: 'Summary (EN)',
+    adminConfirmDelete: 'Delete this item?',
   },
 }
 
-/* ─────────────────────────────────────────
-   APP SHELL
-───────────────────────────────────────── */
-function App() {
-  const [language, setLanguage] = useState('fr')
-  const t = useMemo(() => translations[language], [language])
+const slugify = (str) => str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+const fmtDate = (dateStr, lang) =>
+  new Date(dateStr).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
 
+// ─── Field ────────────────────────────────────────────────────────────────────
+function Field({ label, name, value, onChange, textarea, rows = 4, mono, fullWidth }) {
+  const base = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300'
+  const monoClass = mono ? ' font-mono' : ''
+  const colSpan = fullWidth ? 'sm:col-span-2' : ''
   return (
-    <div className="min-h-screen bg-white font-sans text-zinc-800 antialiased">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-xs font-bold text-white">
-              VN
-            </span>
-            <span className="text-sm font-semibold tracking-tight text-zinc-900">Votre Nom</span>
-          </Link>
-
-          <nav className="hidden items-center gap-7 text-sm text-zinc-500 md:flex">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  `transition-colors hover:text-zinc-900 ${isActive ? 'font-medium text-zinc-900' : ''}`
-                }
-              >
-                {item.label[language]}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLanguage((p) => (p === 'fr' ? 'en' : 'fr'))}
-              className="rounded border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-800"
-            >
-              {t.langToggle}
-            </button>
-            <Link
-              to="/contact"
-              className="hidden rounded bg-zinc-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-zinc-700 sm:inline-flex"
-            >
-              {t.ctaContact}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* PAGES */}
-      <main>
-        <Routes>
-          <Route path="/" element={<HomePage language={language} t={t} />} />
-          <Route path="/portfolio" element={<PortfolioPage language={language} t={t} />} />
-          <Route path="/blog" element={<BlogPage language={language} t={t} />} />
-          <Route path="/contact" element={<ContactPage language={language} t={t} />} />
-        </Routes>
-      </main>
-
-      {/* FOOTER */}
-      <footer className="border-t border-zinc-200 bg-zinc-50">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 text-xs text-zinc-400 sm:flex-row sm:px-8">
-          <p>© 2026 — Votre Nom · Portfolio professionnel</p>
-          <div className="flex gap-5">
-            <a href="https://www.linkedin.com" target="_blank" rel="noreferrer" className="transition hover:text-zinc-700">LinkedIn</a>
-            <a href="https://www.github.com" target="_blank" rel="noreferrer" className="transition hover:text-zinc-700">GitHub</a>
-            <a href="https://www.kaggle.com" target="_blank" rel="noreferrer" className="transition hover:text-zinc-700">Kaggle</a>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
-}
-
-/* ─────────────────────────────────────────
-   HOME PAGE
-───────────────────────────────────────── */
-function HomePage({ language, t }) {
-  return (
-    <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:px-8">
-      {/* Hero */}
-      <section className="grid items-center gap-14 lg:grid-cols-[1fr_380px]">
-        <div className="max-w-2xl">
-          <p className="mb-5 text-xs font-medium uppercase tracking-widest text-zinc-400">{t.heroIntro}</p>
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-5xl lg:text-[3.25rem]">
-            {t.heroTitle}
-          </h1>
-          <p className="mt-5 text-base leading-7 text-zinc-500">{t.heroText}</p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/portfolio"
-              className="rounded bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700"
-            >
-              {t.primaryCta}
-            </Link>
-            <Link
-              to="/contact"
-              className="rounded border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-500 hover:text-zinc-900"
-            >
-              {t.secondaryCta}
-            </Link>
-          </div>
-
-          <div className="mt-10 flex flex-wrap gap-8 border-t border-zinc-100 pt-8">
-            {[
-              [t.stat1Val, t.stat1Label],
-              [t.stat2Val, t.stat2Label],
-              [t.stat3Val, t.stat3Label],
-            ].map(([val, label]) => (
-              <div key={label}>
-                <div className="text-2xl font-bold tracking-tight text-zinc-900">{val}</div>
-                <div className="mt-0.5 text-xs text-zinc-400">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Profile card */}
-        <aside className="rounded-2xl border border-zinc-200 bg-zinc-50 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">{t.badge}</span>
-          </div>
-
-          <div className="mt-6 flex min-h-[220px] items-end justify-center rounded-xl border border-zinc-200 bg-white">
-            <div className="relative mb-5 flex h-44 w-36 items-end justify-center">
-              <div className="absolute inset-x-6 bottom-4 h-28 rounded-[24px] bg-zinc-200" />
-              <div className="absolute top-0 left-1/2 h-[68px] w-[68px] -translate-x-1/2 rounded-full bg-zinc-300" />
-            </div>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded-lg border border-zinc-200 bg-white p-3">
-              <p className="text-zinc-400">{t.metric1}</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-800">90 / 100</p>
-            </div>
-            <div className="rounded-lg border border-zinc-200 bg-white p-3">
-              <p className="text-zinc-400">{t.metric2}</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-800">92 / 100</p>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      {/* About */}
-      <section className="mt-20 border-t border-zinc-100 pt-16">
-        <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">{t.aboutLabel}</p>
-        <h2 className="mt-3 max-w-xl text-2xl font-bold tracking-tight text-zinc-900">{t.aboutTitle}</h2>
-        <div className="mt-6 grid gap-5 text-sm leading-7 text-zinc-500 lg:grid-cols-2">
-          <p>{t.aboutText}</p>
-          <p>{t.aboutText2}</p>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-/* ─────────────────────────────────────────
-   PORTFOLIO PAGE
-───────────────────────────────────────── */
-function PortfolioPage({ language, t }) {
-  const colors = [
-    'bg-zinc-100',
-    'bg-slate-100',
-    'bg-stone-100',
-  ]
-  return (
-    <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:px-8">
-      <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">{t.portfolioLabel}</p>
-      <h2 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900">{t.portfolioTitle}</h2>
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {portfolioProjects.map((project, i) => (
-          <article key={i} className="group overflow-hidden rounded-xl border border-zinc-200 bg-white transition hover:shadow-md">
-            <div className={`h-44 ${colors[i % colors.length]} flex items-center justify-center`}>
-              <span className="text-3xl font-black tracking-tight text-zinc-300">{String(i + 1).padStart(2, '0')}</span>
-            </div>
-            <div className="p-5">
-              <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">{project.category[language]}</span>
-              <h3 className="mt-1 text-base font-semibold text-zinc-900">{project.title[language]}</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">{project.summary[language]}</p>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {project.tags.map((tag) => (
-                  <span key={tag} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <Link to="/contact" className="mt-4 inline-flex text-xs font-semibold text-zinc-700 underline-offset-2 hover:underline">
-                {t.readMore} →
-              </Link>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/* ─────────────────────────────────────────
-   BLOG PAGE
-───────────────────────────────────────── */
-function BlogPage({ language, t }) {
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState(allCategories[language][0])
-  const [sortOrder, setSortOrder] = useState('newest')
-
-  const categories = allCategories[language]
-
-  const filtered = useMemo(() => {
-    const allCat = categories[0]
-    let posts = blogPosts.filter((p) => {
-      const matchSearch = p.title[language].toLowerCase().includes(search.toLowerCase()) ||
-        p.excerpt[language].toLowerCase().includes(search.toLowerCase())
-      const matchCat = category === allCat || p.category[language] === category
-      return matchSearch && matchCat
-    })
-    posts = [...posts].sort((a, b) => {
-      return sortOrder === 'newest'
-        ? new Date(b.date) - new Date(a.date)
-        : new Date(a.date) - new Date(b.date)
-    })
-    return posts
-  }, [search, category, sortOrder, language, categories])
-
-  const fmtDate = (dateStr) =>
-    new Date(dateStr).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-GB', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    })
-
-  return (
-    <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:px-8">
-      <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">{t.blogLabel}</p>
-      <h2 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900">{t.blogTitle}</h2>
-
-      {/* Toolbar */}
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-        {/* Search */}
-        <div className="relative flex-1">
-          <svg className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.blogSearch}
-            className="w-full rounded border border-zinc-300 bg-white py-2.5 pl-9 pr-4 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">✕</button>
-          )}
-        </div>
-
-        {/* Category filter */}
-        <div className="flex gap-1.5 flex-wrap">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`rounded border px-3 py-1.5 text-xs font-medium transition ${
-                category === cat
-                  ? 'border-zinc-900 bg-zinc-900 text-white'
-                  : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-400 hover:text-zinc-800'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Date sort */}
-        <select
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          className="rounded border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-600 focus:border-zinc-500 focus:outline-none"
-        >
-          <option value="newest">{t.blogSortNewest}</option>
-          <option value="oldest">{t.blogSortOldest}</option>
-        </select>
-      </div>
-
-      {/* Count */}
-      <p className="mt-4 text-xs text-zinc-400">
-        {filtered.length} {language === 'fr' ? 'article' + (filtered.length > 1 ? 's' : '') : 'article' + (filtered.length > 1 ? 's' : '')}
-      </p>
-
-      {/* Articles */}
-      {filtered.length === 0 ? (
-        <p className="mt-12 text-center text-sm text-zinc-400">{t.blogNoResults}</p>
+    <div className={colSpan}>
+      <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{label}</label>
+      {textarea ? (
+        <textarea
+          name={name}
+          value={value}
+          onChange={onChange}
+          rows={rows}
+          className={base + monoClass}
+        />
       ) : (
-        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((post) => (
-            <article key={post.id} className="group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition hover:shadow-md">
-              <div className="h-36 bg-zinc-50 flex items-end justify-between p-4">
-                <span className="rounded border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-zinc-500">
-                  {post.category[language]}
-                </span>
-                <span className="text-[10px] text-zinc-400">{fmtDate(post.date)}</span>
-              </div>
-              <div className="flex flex-1 flex-col p-5">
-                <h3 className="text-sm font-semibold leading-snug text-zinc-900">{post.title[language]}</h3>
-                <p className="mt-2 flex-1 text-xs leading-5 text-zinc-500">{post.excerpt[language]}</p>
-                <Link
-                  to="/contact"
-                  className="mt-4 inline-flex text-xs font-semibold text-zinc-700 underline-offset-2 hover:underline"
-                >
-                  {t.readArticle} →
-                </Link>
-              </div>
-            </article>
-          ))}
-        </div>
+        <input
+          name={name}
+          value={value}
+          onChange={onChange}
+          className={base + monoClass}
+        />
       )}
     </div>
   )
 }
 
-/* ─────────────────────────────────────────
-   CONTACT PAGE
-───────────────────────────────────────── */
-function ContactPage({ language, t }) {
-  const [submitted, setSubmitted] = useState(false)
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 3000)
-    e.target.reset()
-  }
-
+// ─── AdminList ────────────────────────────────────────────────────────────────
+function AdminList({ items, onEdit, onDelete, tr, lang }) {
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-24 pt-16 sm:px-8">
-      <div className="grid gap-14 lg:grid-cols-[1fr_480px]">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">{t.contactLabel}</p>
-          <h2 className="mt-3 text-2xl font-bold tracking-tight text-zinc-900">{t.contactTitle}</h2>
-          <p className="mt-4 text-sm leading-7 text-zinc-500">{t.contactText}</p>
-
-          <div className="mt-8 space-y-2 text-sm">
-            <a href={`mailto:${t.email}`} className="flex items-center gap-2 text-zinc-600 transition hover:text-zinc-900">
-              <span className="text-zinc-300">→</span>{t.email}
-            </a>
-            <a href={`tel:${t.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 text-zinc-600 transition hover:text-zinc-900">
-              <span className="text-zinc-300">→</span>{t.phone}
-            </a>
-            <a href="https://www.linkedin.com" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-zinc-600 transition hover:text-zinc-900">
-              <span className="text-zinc-300">→</span>LinkedIn
-            </a>
+    <ul className="rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-100 overflow-hidden">
+      {items.map((item) => (
+        <li key={item.slug} className="flex items-center justify-between px-4 py-3 gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${item.published ? 'bg-emerald-400' : 'bg-zinc-300'}`}
+              title={item.published ? tr.adminPublished : tr.adminDraft}
+            />
+            <span className="text-sm font-medium text-zinc-800 truncate">
+              {item.title?.[lang] ?? item.title}
+            </span>
+            {item.date && (
+              <span className="text-xs text-zinc-400 shrink-0">{fmtDate(item.date, lang)}</span>
+            )}
           </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-200 bg-zinc-50 p-6 sm:p-8">
-          <div className="grid gap-4">
-            <label className="block text-xs font-medium text-zinc-600">
-              {t.formName}
-              <input type="text" required className="mt-1.5 w-full rounded border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none" placeholder={t.formName} />
-            </label>
-            <label className="block text-xs font-medium text-zinc-600">
-              {t.formEmail}
-              <input type="email" required className="mt-1.5 w-full rounded border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none" placeholder={t.formEmail} />
-            </label>
-            <label className="block text-xs font-medium text-zinc-600">
-              {t.formMessage}
-              <textarea rows="5" required className="mt-1.5 w-full rounded border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none" placeholder={t.formMessage} />
-            </label>
+          <div className="flex gap-2 shrink-0">
             <button
-              type="submit"
-              className="mt-1 rounded bg-zinc-900 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700"
+              onClick={() => onEdit(item)}
+              className="text-xs border border-zinc-200 rounded-lg px-3 py-1 text-zinc-600 hover:bg-zinc-50"
             >
-              {submitted ? (language === 'fr' ? 'Message envoyé ✓' : 'Message sent ✓') : t.formSubmit}
+              {tr.adminEdit}
+            </button>
+            <button
+              onClick={() => onDelete(item.slug)}
+              className="text-xs border border-red-200 rounded-lg px-3 py-1 text-red-500 hover:bg-red-50"
+            >
+              {tr.adminDelete}
             </button>
           </div>
-        </form>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// flatten {fr,en} objects to flat fields for the editor form
+function flattenForEditor(item) {
+  if (!item) return null
+  return {
+    ...item,
+    title: item.title?.fr ?? item.title ?? '',
+    titleEn: item.title?.en ?? item.titleEn ?? '',
+    category: item.category?.fr ?? item.category ?? '',
+    categoryEn: item.category?.en ?? item.categoryEn ?? '',
+    excerpt: item.excerpt?.fr ?? item.excerpt ?? '',
+    excerptEn: item.excerpt?.en ?? item.excerptEn ?? '',
+    summary: item.summary?.fr ?? item.summary ?? '',
+    summaryEn: item.summary?.en ?? item.summaryEn ?? '',
+    content: item.content?.fr ?? item.content ?? '',
+    contentEn: item.content?.en ?? item.contentEn ?? '',
+  }
+}
+
+// re-compose flat fields back to {fr,en} objects for storage
+function composeFromFlat(flat) {
+  return {
+    ...flat,
+    title: { fr: flat.title || '', en: flat.titleEn || '' },
+    category: { fr: flat.category || '', en: flat.categoryEn || '' },
+    excerpt: { fr: flat.excerpt || '', en: flat.excerptEn || '' },
+    summary: { fr: flat.summary || '', en: flat.summaryEn || '' },
+    content: { fr: flat.content || '', en: flat.contentEn || '' },
+  }
+}
+
+// ─── PostEditor ───────────────────────────────────────────────────────────────
+function PostEditor({ initial, onSave, onCancel, tr }) {
+  const empty = {
+    title: '', titleEn: '', slug: '', date: new Date().toISOString().slice(0, 10),
+    category: '', categoryEn: '', excerpt: '', excerptEn: '',
+    content: '', contentEn: '', published: false,
+  }
+  const [form, setForm] = useState(flattenForEditor(initial) || empty)
+  const handle = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+  const autoSlug = () => {
+    if (!form.slug && form.title) setForm((f) => ({ ...f, slug: slugify(f.title) }))
+  }
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label={tr.adminFieldTitle} name="title" value={form.title} onChange={handle} />
+        <Field label={tr.adminFieldTitleEn} name="titleEn" value={form.titleEn} onChange={handle} />
+        <Field label={tr.adminFieldSlug} name="slug" value={form.slug} onChange={handle} onBlur={autoSlug} />
+        <Field label={tr.adminFieldDate} name="date" value={form.date} onChange={handle} />
+        <Field label={tr.adminFieldCategory} name="category" value={form.category} onChange={handle} />
+        <Field label={tr.adminFieldCategoryEn} name="categoryEn" value={form.categoryEn} onChange={handle} />
+        <Field label={tr.adminFieldExcerpt} name="excerpt" value={form.excerpt} onChange={handle} textarea rows={3} fullWidth />
+        <Field label={tr.adminFieldExcerptEn} name="excerptEn" value={form.excerptEn} onChange={handle} textarea rows={3} fullWidth />
+        <Field label={tr.adminFieldContent} name="content" value={form.content} onChange={handle} textarea rows={12} mono fullWidth />
+        <Field label={tr.adminFieldContentEn} name="contentEn" value={form.contentEn} onChange={handle} textarea rows={12} mono fullWidth />
+        <ImageField value={form.image || ''} onChange={(v) => setForm((f) => ({ ...f, image: v }))} />
+      </div>
+      <div className="mt-4 flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+          <input type="checkbox" name="published" checked={form.published} onChange={handle} className="accent-zinc-800" />
+          {tr.adminPublished}
+        </label>
+        <div className="ml-auto flex gap-3">
+          <button onClick={onCancel} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
+            Annuler / Cancel
+          </button>
+          <button onClick={() => onSave(composeFromFlat(form))} className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700">
+            {tr.adminSave}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-export default App
+// ─── ProjectEditor ────────────────────────────────────────────────────────────
+function ProjectEditor({ initial, onSave, onCancel, tr }) {
+  const empty = {
+    title: '', titleEn: '', slug: '', date: new Date().toISOString().slice(0, 10),
+    category: '', categoryEn: '', summary: '', summaryEn: '',
+    content: '', contentEn: '', tags: '', published: false,
+  }
+  const [form, setForm] = useState(() => {
+    const flat = flattenForEditor(initial) || empty
+    return { ...flat, tags: Array.isArray(initial?.tags) ? initial.tags.join(', ') : (flat.tags || '') }
+  })
+  const handle = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+  const autoSlug = () => {
+    if (!form.slug && form.title) setForm((f) => ({ ...f, slug: slugify(f.title) }))
+  }
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label={tr.adminFieldTitle} name="title" value={form.title} onChange={handle} />
+        <Field label={tr.adminFieldTitleEn} name="titleEn" value={form.titleEn} onChange={handle} />
+        <Field label={tr.adminFieldSlug} name="slug" value={form.slug} onChange={handle} onBlur={autoSlug} />
+        <Field label={tr.adminFieldDate} name="date" value={form.date} onChange={handle} />
+        <Field label={tr.adminFieldCategory} name="category" value={form.category} onChange={handle} />
+        <Field label={tr.adminFieldCategoryEn} name="categoryEn" value={form.categoryEn} onChange={handle} />
+        <Field label={tr.adminFieldTags} name="tags" value={form.tags} onChange={handle} fullWidth />
+        <Field label={tr.adminFieldSummary} name="summary" value={form.summary} onChange={handle} textarea rows={3} fullWidth />
+        <Field label={tr.adminFieldSummaryEn} name="summaryEn" value={form.summaryEn} onChange={handle} textarea rows={3} fullWidth />
+        <Field label={tr.adminFieldContent} name="content" value={form.content} onChange={handle} textarea rows={12} mono fullWidth />
+        <Field label={tr.adminFieldContentEn} name="contentEn" value={form.contentEn} onChange={handle} textarea rows={12} mono fullWidth />
+        <ImageField value={form.image || ''} onChange={(v) => setForm((f) => ({ ...f, image: v }))} />
+      </div>
+      <div className="mt-4 flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+          <input type="checkbox" name="published" checked={form.published} onChange={handle} className="accent-zinc-800" />
+          {tr.adminPublished}
+        </label>
+        <div className="ml-auto flex gap-3">
+          <button onClick={onCancel} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
+            Annuler / Cancel
+          </button>
+          <button
+            onClick={() => onSave(composeFromFlat({ ...form, tags: form.tags.split(',').map((s) => s.trim()).filter(Boolean) }))}
+            className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700"
+          >
+            {tr.adminSave}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── ImageField ──────────────────────────────────────────────────────────────
+function ImageField({ value, onChange }) {
+  const fileRef = useRef()
+  const handleFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => onChange(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+  return (
+    <div className="col-span-2 flex flex-col gap-2">
+      <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400">Image (vignette)</label>
+      <div className="flex gap-3 items-start">
+        {value ? (
+          <div className="relative shrink-0">
+            <img src={value} alt="preview" className="w-28 h-20 object-cover rounded-lg border border-zinc-200" />
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-zinc-800 text-white text-xs flex items-center justify-center hover:bg-red-500"
+              title="Supprimer"
+            >×</button>
+          </div>
+        ) : (
+          <div className="w-28 h-20 rounded-lg border-2 border-dashed border-zinc-200 flex items-center justify-center text-zinc-300 text-xs shrink-0">
+            Aperçu
+          </div>
+        )}
+        <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <input
+            type="text"
+            placeholder="https://... (URL de l'image)"
+            value={value && value.startsWith('data:') ? '' : (value || '')}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current.click()}
+            className="self-start text-xs border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-600 hover:bg-zinc-50"
+          >
+            📁 Choisir un fichier
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+          <p className="text-xs text-zinc-400">URL externe ou fichier local (stocké en base64)</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+const cardBgs = ['bg-zinc-100', 'bg-slate-100', 'bg-stone-100']
+function ProjectCard({ project, index, tr, lang }) {
+  const bg = cardBgs[index % cardBgs.length]
+  const title = project.title?.[lang] ?? project.title
+  const summary = project.summary?.[lang] ?? project.summary
+  const category = project.category?.[lang] ?? project.category
+  return (
+    <Link
+      to={`/portfolio/${project.slug}`}
+      className="group rounded-xl border border-zinc-200 bg-white hover:shadow-md transition-shadow overflow-hidden flex flex-col"
+    >
+      {project.image ? (
+        <img src={project.image} alt={title} className="w-full h-40 object-cover" />
+      ) : (
+        <div className={`${bg} px-6 pt-5 pb-3`}>
+          <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{String(index + 1).padStart(2, '0')}</span>
+        </div>
+      )}
+      <div className="px-6 py-4 flex flex-col flex-1 gap-3">
+        <div>
+          <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{category}</span>
+          <h3 className="mt-1 text-base font-semibold text-zinc-900 leading-snug">{title}</h3>
+        </div>
+        <p className="text-sm text-zinc-600 leading-relaxed flex-1">{summary}</p>
+        {project.tags && project.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {project.tags.map((tag) => (
+              <span key={tag} className="text-xs bg-zinc-100 text-zinc-500 rounded-full px-2 py-0.5">{tag}</span>
+            ))}
+          </div>
+        )}
+        <span className="text-xs font-medium text-zinc-900 group-hover:underline">{tr.readMore}</span>
+      </div>
+    </Link>
+  )
+}
+
+// ─── PostCard ─────────────────────────────────────────────────────────────────
+function PostCard({ post, tr, lang }) {
+  const title = post.title?.[lang] ?? post.title
+  const excerpt = post.excerpt?.[lang] ?? post.excerpt
+  const category = post.category?.[lang] ?? post.category
+  return (
+    <Link
+      to={`/blog/${post.slug}`}
+      className="group rounded-xl border border-zinc-200 bg-white hover:shadow-md transition-shadow flex flex-col overflow-hidden"
+    >
+      {post.image ? (
+        <img src={post.image} alt={title} className="w-full h-36 object-cover" />
+      ) : (
+        <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-2">
+          <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{category}</span>
+          <span className="text-xs text-zinc-400">{fmtDate(post.date, lang)}</span>
+        </div>
+      )}
+      <div className="px-5 py-4 flex flex-col flex-1 gap-2">
+        {post.image && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{category}</span>
+            <span className="text-xs text-zinc-400">{fmtDate(post.date, lang)}</span>
+          </div>
+        )}
+        <h3 className="text-base font-semibold text-zinc-900 leading-snug">{title}</h3>
+        <p className="text-sm text-zinc-500 leading-relaxed flex-1">{excerpt}</p>
+        <span className="text-xs font-medium text-zinc-900 group-hover:underline">{tr.readArticle}</span>
+      </div>
+    </Link>
+  )
+}
+
+// ─── HomePage ─────────────────────────────────────────────────────────────────
+function HomePage({ tr, language }) {
+  const projects = useMemo(() => getProjects().filter((p) => p.published).slice(0, 3), [])
+  return (
+    <main>
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <span className="inline-block text-xs font-medium uppercase tracking-widest text-zinc-400 border border-zinc-200 rounded-full px-3 py-1 mb-6">
+            {tr.badge}
+          </span>
+          <p className="text-zinc-500 text-lg mb-1">{tr.heroIntro}</p>
+          <h1 className="text-4xl sm:text-5xl font-bold text-zinc-900 mb-5 leading-tight">{tr.heroTitle}</h1>
+          <p className="text-zinc-600 text-lg leading-relaxed mb-8 max-w-lg">{tr.heroText}</p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/portfolio"
+              className="bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700 transition-colors"
+            >
+              {tr.primaryCta}
+            </Link>
+            <Link
+              to="/contact"
+              className="border border-zinc-200 text-zinc-700 text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-50 transition-colors"
+            >
+              {tr.secondaryCta}
+            </Link>
+          </div>
+        </div>
+        <aside className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+          <div className="w-20 h-20 rounded-full bg-zinc-100 mb-5 flex items-center justify-center text-2xl font-bold text-zinc-400">
+            VN
+          </div>
+          <p className="font-semibold text-zinc-900 text-lg">{tr.heroTitle}</p>
+          <p className="text-zinc-500 text-sm mt-1">{tr.badge}</p>
+          <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+            {[
+              { val: tr.stat1Val, label: tr.stat1Label },
+              { val: tr.stat2Val, label: tr.stat2Label },
+              { val: tr.stat3Val, label: tr.stat3Label },
+            ].map(({ val, label }) => (
+              <div key={label} className="rounded-xl bg-zinc-50 border border-zinc-100 px-2 py-3">
+                <p className="text-lg font-bold text-zinc-900">{val}</p>
+                <p className="text-xs text-zinc-400 mt-0.5 leading-tight">{label}</p>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
+
+      {/* About */}
+      <section className="bg-zinc-50 border-y border-zinc-200 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          <div>
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.aboutLabel}</span>
+            <h2 className="mt-3 text-3xl font-bold text-zinc-900 leading-snug">{tr.aboutTitle}</h2>
+          </div>
+          <div className="space-y-4">
+            <p className="text-zinc-600 leading-relaxed">{tr.aboutText}</p>
+            <p className="text-zinc-600 leading-relaxed">{tr.aboutText2}</p>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              {[tr.metric1, tr.metric2].map((m) => (
+                <div key={m} className="rounded-xl border border-zinc-200 bg-white p-4 text-sm font-medium text-zinc-800">
+                  {m}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured projects */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.portfolioLabel}</span>
+            <h2 className="mt-2 text-3xl font-bold text-zinc-900">{tr.portfolioTitle}</h2>
+          </div>
+          <Link to="/portfolio" className="text-sm text-zinc-500 hover:text-zinc-900 transition-colors">
+            {tr.readMore}
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map((p, i) => (
+            <ProjectCard key={p.slug} project={p} index={i} tr={tr} lang={language} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
+// ─── PortfolioPage ────────────────────────────────────────────────────────────
+function PortfolioPage({ tr, language }) {
+  const projects = useMemo(() => getProjects().filter((p) => p.published), [])
+  return (
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+      <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.portfolioLabel}</span>
+      <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-10">{tr.portfolioTitle}</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.map((p, i) => (
+          <ProjectCard key={p.slug} project={p} index={i} tr={tr} lang={language} />
+        ))}
+      </div>
+    </main>
+  )
+}
+
+// ─── ProjectDetailPage ────────────────────────────────────────────────────────
+function ProjectDetailPage({ tr, language }) {
+  const { slug } = useParams()
+  const project = getProjectBySlug(slug)
+  if (!project) return <NotFoundPage tr={tr} />
+  const title = language === 'fr' ? project.title?.fr ?? project.title : project.title?.en ?? project.titleEn ?? project.title
+  const summary = language === 'fr' ? project.summary?.fr ?? project.summary : project.summary?.en ?? project.summaryEn ?? project.summary
+  const category = language === 'fr' ? project.category?.fr ?? project.category : project.category?.en ?? project.categoryEn ?? project.category
+  const content = language === 'fr' ? project.content?.fr ?? project.content : project.content?.en ?? project.contentEn ?? project.content
+  return (
+    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+      <Link to="/portfolio" className="text-sm text-zinc-400 hover:text-zinc-800 transition-colors mb-8 inline-block">
+        {tr.backPortfolio}
+      </Link>
+      <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{category}</span>
+      <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-2">{title}</h1>
+      <p className="text-sm text-zinc-400 mb-6">{fmtDate(project.date, language)}</p>
+      {project.tags && project.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8">
+          {project.tags.map((tag) => (
+            <span key={tag} className="text-xs bg-zinc-100 text-zinc-500 rounded-full px-3 py-1">{tag}</span>
+          ))}
+        </div>
+      )}
+      <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-6 py-5 mb-10">
+        <p className="text-zinc-600 leading-relaxed">{summary}</p>
+      </div>
+      <div className="prose prose-zinc max-w-none">
+        <Markdown content={content} />
+      </div>
+      <div className="mt-16 rounded-xl border border-zinc-200 bg-white p-8 text-center">
+        <p className="text-zinc-600 mb-4">{tr.contactText}</p>
+        <Link
+          to="/contact"
+          className="bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700 transition-colors"
+        >
+          {tr.ctaContact}
+        </Link>
+      </div>
+    </main>
+  )
+}
+
+// ─── BlogPage ─────────────────────────────────────────────────────────────────
+function BlogPage({ tr, language }) {
+  const posts = useMemo(() => getPosts().filter((p) => p.published), [])
+  const cats = allCategories[language]
+  const [search, setSearch] = useState('')
+  const [cat, setCat] = useState(cats[0])
+  const [sort, setSort] = useState('newest')
+
+  const filtered = useMemo(() => {
+    let list = posts
+    const firstCat = cats[0]
+    if (cat !== firstCat) {
+      list = list.filter((p) => {
+        const c = p.category?.[language] ?? p.category
+        return c === cat
+      })
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter((p) => {
+        const title = (p.title?.[language] ?? p.title ?? '')
+        const excerpt = (p.excerpt?.[language] ?? p.excerpt ?? '')
+        return title.toLowerCase().includes(q) || excerpt.toLowerCase().includes(q)
+      })
+    }
+    list = [...list].sort((a, b) =>
+      sort === 'newest'
+        ? new Date(b.date) - new Date(a.date)
+        : new Date(a.date) - new Date(b.date)
+    )
+    return list
+  }, [posts, cat, search, sort, language, cats])
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+      <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.blogLabel}</span>
+      <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-8">{tr.blogTitle}</h1>
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <input
+          type="search"
+          placeholder={tr.blogSearch}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-300"
+        />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-600 focus:outline-none"
+        >
+          <option value="newest">{tr.blogSortNewest}</option>
+          <option value="oldest">{tr.blogSortOldest}</option>
+        </select>
+      </div>
+      <div className="flex flex-wrap gap-2 mb-10">
+        {cats.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCat(c)}
+            className={`text-xs font-medium rounded-full px-4 py-1.5 border transition-colors ${
+              cat === c
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'border-zinc-200 text-zinc-500 hover:border-zinc-400'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-zinc-400 text-sm">{tr.blogNoResults}</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((post) => (
+            <PostCard key={post.slug} post={post} tr={tr} lang={language} />
+          ))}
+        </div>
+      )}
+    </main>
+  )
+}
+
+// ─── PostDetailPage ───────────────────────────────────────────────────────────
+function PostDetailPage({ tr, language }) {
+  const { slug } = useParams()
+  const post = getPostBySlug(slug)
+  if (!post) return <NotFoundPage tr={tr} />
+  const title = language === 'fr' ? post.title?.fr ?? post.title : post.title?.en ?? post.titleEn ?? post.title
+  const excerpt = language === 'fr' ? post.excerpt?.fr ?? post.excerpt : post.excerpt?.en ?? post.excerptEn ?? post.excerpt
+  const category = language === 'fr' ? post.category?.fr ?? post.category : post.category?.en ?? post.categoryEn ?? post.category
+  const content = language === 'fr' ? post.content?.fr ?? post.content : post.content?.en ?? post.contentEn ?? post.content
+  return (
+    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+      <Link to="/blog" className="text-sm text-zinc-400 hover:text-zinc-800 transition-colors mb-8 inline-block">
+        {tr.backBlog}
+      </Link>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{category}</span>
+        <span className="text-zinc-300">·</span>
+        <span className="text-xs text-zinc-400">{fmtDate(post.date, language)}</span>
+      </div>
+      <h1 className="text-3xl font-bold text-zinc-900 mb-4">{title}</h1>
+      <p className="text-zinc-500 text-lg leading-relaxed mb-10 border-l-2 border-zinc-200 pl-4">{excerpt}</p>
+      <div className="prose prose-zinc max-w-none">
+        <Markdown content={content} />
+      </div>
+    </main>
+  )
+}
+
+// ─── ContactPage ──────────────────────────────────────────────────────────────
+function ContactPage({ tr }) {
+  const [sent, setSent] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', message: '' })
+  const handle = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+  const submit = (e) => {
+    e.preventDefault()
+    setSent(true)
+  }
+  return (
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+      <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.contactLabel}</span>
+      <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-12">{tr.contactTitle}</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Left */}
+        <div>
+          <p className="text-zinc-600 leading-relaxed mb-8">{tr.contactText}</p>
+          <div className="space-y-4">
+            <a href={`mailto:${tr.email}`} className="flex items-center gap-3 text-sm text-zinc-700 hover:text-zinc-900">
+              <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">@</span>
+              {tr.email}
+            </a>
+            <div className="flex items-center gap-3 text-sm text-zinc-700">
+              <span className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">☎</span>
+              {tr.phone}
+            </div>
+          </div>
+        </div>
+        {/* Right */}
+        <div className="rounded-xl border border-zinc-200 bg-white p-8">
+          {sent ? (
+            <p className="text-zinc-700 text-center py-8">✓ Message envoyé / Message sent</p>
+          ) : (
+            <form onSubmit={submit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formName}</label>
+                <input name="name" value={form.name} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formEmail}</label>
+                <input name="email" type="email" value={form.email} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formMessage}</label>
+                <textarea name="message" value={form.message} onChange={handle} rows={5} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+              </div>
+              <button type="submit" className="w-full bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700 transition-colors">
+                {tr.formSubmit}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+// ─── NotFoundPage ─────────────────────────────────────────────────────────────
+function NotFoundPage({ tr }) {
+  return (
+    <main className="max-w-xl mx-auto px-4 py-32 text-center">
+      <p className="text-6xl font-bold text-zinc-200 mb-4">404</p>
+      <p className="text-xl font-semibold text-zinc-800 mb-6">{tr ? tr.notFound : 'Page not found'}</p>
+      <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-900 underline">
+        {tr ? tr.notFoundBack : 'Back to home'}
+      </Link>
+    </main>
+  )
+}
+
+// ─── AdminPage ────────────────────────────────────────────────────────────────
+function AdminPage({ tr, language }) {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('admin_authed') === '1')
+  const [pwd, setPwd] = useState('')
+  const [loginError, setLoginError] = useState(false)
+  const [tab, setTab] = useState('posts')
+  const [posts, setPosts] = useState(() => getPosts())
+  const [projects, setProjects] = useState(() => getProjects())
+  const [editingPost, setEditingPost] = useState(null)
+  const [editingProject, setEditingProject] = useState(null)
+  const [newPost, setNewPost] = useState(false)
+  const [newProject, setNewProject] = useState(false)
+
+  const login = (e) => {
+    e.preventDefault()
+    if (pwd === ADMIN_PASSWORD) {
+      sessionStorage.setItem('admin_authed', '1')
+      setAuthed(true)
+      setLoginError(false)
+    } else {
+      setLoginError(true)
+    }
+  }
+
+  const logout = () => {
+    sessionStorage.removeItem('admin_authed')
+    setAuthed(false)
+  }
+
+  const savePost = (data) => {
+    const updated = posts.some((p) => p.slug === data.slug)
+      ? posts.map((p) => (p.slug === data.slug ? data : p))
+      : [...posts, data]
+    savePosts(updated)
+    setPosts(updated)
+    setEditingPost(null)
+    setNewPost(false)
+  }
+
+  const deletePost = (slug) => {
+    if (!window.confirm(tr.adminConfirmDelete)) return
+    const updated = posts.filter((p) => p.slug !== slug)
+    savePosts(updated)
+    setPosts(updated)
+    if (editingPost && editingPost.slug === slug) setEditingPost(null)
+  }
+
+  const saveProject = (data) => {
+    const updated = projects.some((p) => p.slug === data.slug)
+      ? projects.map((p) => (p.slug === data.slug ? data : p))
+      : [...projects, data]
+    saveProjects(updated)
+    setProjects(updated)
+    setEditingProject(null)
+    setNewProject(false)
+  }
+
+  const deleteProject = (slug) => {
+    if (!window.confirm(tr.adminConfirmDelete)) return
+    const updated = projects.filter((p) => p.slug !== slug)
+    saveProjects(updated)
+    setProjects(updated)
+    if (editingProject && editingProject.slug === slug) setEditingProject(null)
+  }
+
+  if (!authed) {
+    return (
+      <main className="max-w-sm mx-auto px-4 py-32">
+        <h1 className="text-2xl font-bold text-zinc-900 mb-8 text-center">{tr.adminTitle}</h1>
+        <form onSubmit={login} className="rounded-xl border border-zinc-200 bg-white p-8 space-y-4">
+          <div>
+            <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">
+              {tr.adminPasswordLabel}
+            </label>
+            <input
+              type="password"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+            />
+          </div>
+          {loginError && <p className="text-xs text-red-500">{tr.adminLoginError}</p>}
+          <button type="submit" className="w-full bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700">
+            {tr.adminLoginBtn}
+          </button>
+        </form>
+      </main>
+    )
+  }
+
+  return (
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold text-zinc-900">{tr.adminTitle}</h1>
+        <button onClick={logout} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
+          {tr.adminLogout}
+        </button>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-2 mb-8">
+        {['posts', 'projects'].map((tabKey) => (
+          <button
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
+            className={`text-sm font-medium rounded-lg px-4 py-2 border transition-colors ${
+              tab === tabKey
+                ? 'bg-zinc-900 text-white border-zinc-900'
+                : 'border-zinc-200 text-zinc-500 hover:border-zinc-400'
+            }`}
+          >
+            {tabKey === 'posts' ? tr.adminPosts : tr.adminProjects}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'posts' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.adminPosts}</span>
+            <button
+              onClick={() => { setNewPost(true); setEditingPost(null) }}
+              className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700"
+            >
+              {tr.adminNewPost}
+            </button>
+          </div>
+          <AdminList items={posts} onEdit={(item) => { setEditingPost(item); setNewPost(false) }} onDelete={deletePost} tr={tr} lang={language} />
+          {(newPost || editingPost) && (
+            <PostEditor
+              key={editingPost ? editingPost.slug : 'new'}
+              initial={editingPost}
+              onSave={savePost}
+              onCancel={() => { setEditingPost(null); setNewPost(false) }}
+              tr={tr}
+            />
+          )}
+        </div>
+      )}
+
+      {tab === 'projects' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.adminProjects}</span>
+            <button
+              onClick={() => { setNewProject(true); setEditingProject(null) }}
+              className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700"
+            >
+              {tr.adminNewProject}
+            </button>
+          </div>
+          <AdminList items={projects} onEdit={(item) => { setEditingProject(item); setNewProject(false) }} onDelete={deleteProject} tr={tr} lang={language} />
+          {(newProject || editingProject) && (
+            <ProjectEditor
+              key={editingProject ? editingProject.slug : 'new'}
+              initial={editingProject}
+              onSave={saveProject}
+              onCancel={() => { setEditingProject(null); setNewProject(false) }}
+              tr={tr}
+            />
+          )}
+        </div>
+      )}
+    </main>
+  )
+}
+
+// ─── App (default export) ─────────────────────────────────────────────────────
+const navItems = [
+  { labelFr: 'Accueil', labelEn: 'Home', to: '/' },
+  { labelFr: 'Portfolio', labelEn: 'Portfolio', to: '/portfolio' },
+  { labelFr: 'Blog', labelEn: 'Blog', to: '/blog' },
+  { labelFr: 'Contact', labelEn: 'Contact', to: '/contact' },
+]
+
+export default function App() {
+  const [language, setLanguage] = useState('fr')
+  const tr = t[language]
+
+  const toggleLang = () => setLanguage((l) => (l === 'fr' ? 'en' : 'fr'))
+
+  return (
+    <>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-6">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 shrink-0">
+            <span className="w-7 h-7 rounded bg-zinc-900 text-white text-xs font-bold flex items-center justify-center">
+              VN
+            </span>
+            <span className="text-sm font-semibold text-zinc-900">Votre Nom</span>
+          </Link>
+
+          {/* Nav */}
+          <nav className="hidden md:flex items-center gap-1 ml-2">
+            {navItems.map(({ labelFr, labelEn, to }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/'}
+                className={({ isActive }) =>
+                  `text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-zinc-100 text-zinc-900 font-medium'
+                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
+                  }`
+                }
+              >
+                {language === 'fr' ? labelFr : labelEn}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2">
+            {/* Language toggle */}
+            <button
+              onClick={toggleLang}
+              className="text-xs font-medium border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 hover:bg-zinc-50 transition-colors"
+            >
+              {tr.langToggle}
+            </button>
+            {/* CTA */}
+            <Link
+              to="/contact"
+              className="hidden sm:inline-flex bg-zinc-900 text-white text-sm font-medium rounded-lg px-4 py-1.5 hover:bg-zinc-700 transition-colors"
+            >
+              {tr.ctaContact}
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Routes */}
+      <Routes>
+        <Route path="/" element={<HomePage tr={tr} language={language} />} />
+        <Route path="/portfolio" element={<PortfolioPage tr={tr} language={language} />} />
+        <Route path="/portfolio/:slug" element={<ProjectDetailPage tr={tr} language={language} />} />
+        <Route path="/blog" element={<BlogPage tr={tr} language={language} />} />
+        <Route path="/blog/:slug" element={<PostDetailPage tr={tr} language={language} />} />
+        <Route path="/contact" element={<ContactPage tr={tr} />} />
+        <Route path="/admin" element={<AdminPage tr={tr} language={language} />} />
+        <Route path="*" element={<NotFoundPage tr={tr} />} />
+      </Routes>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-200 bg-white mt-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-zinc-400">© {new Date().getFullYear()} Votre Nom</p>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://linkedin.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-400 hover:text-zinc-800 transition-colors"
+            >
+              LinkedIn
+            </a>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-400 hover:text-zinc-800 transition-colors"
+            >
+              GitHub
+            </a>
+            <a
+              href="https://kaggle.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-400 hover:text-zinc-800 transition-colors"
+            >
+              Kaggle
+            </a>
+          </div>
+        </div>
+      </footer>
+    </>
+  )
+}

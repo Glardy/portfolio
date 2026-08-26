@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Portfolio professionnel pour un profil actuariat, risk management et data science." />
     <title>Portfolio | Actuariat & Finance</title>
+    <script>
+      // GitHub Pages SPA — restore path encoded by 404.html
+      (function () {
+        var search = window.location.search
+        if (search && search.indexOf('?p=') === 0) {
+          var params = {}
+          search.slice(1).split('&').forEach(function (part) {
+            var idx = part.indexOf('=')
+            var key = part.slice(0, idx)
+            var val = decodeURIComponent(part.slice(idx + 1))
+            params[key] = val
+          })
+          var newPath =
+            window.location.pathname.replace(/\/$/, '') +
+            (params.p || '') +
+            (params.q ? '?' + params.q : '') +
+            window.location.hash
+          window.history.replaceState(null, null, newPath)
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
