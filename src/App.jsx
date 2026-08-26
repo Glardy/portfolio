@@ -35,6 +35,9 @@ const t = {
     aboutText2: 'Mon approche combine rigueur mathématique et pragmatisme data pour produire des solutions robustes et explicables.',
     metric1: 'Modélisation',
     metric2: 'Analyse',
+    timelineLabel: 'Parcours',
+    timelineTitle: 'Timeline carrière & formation',
+    timelineIntro: 'Un parcours structuré entre formation actuarielle, finance et data science.',
     portfolioLabel: 'Portfolio',
     portfolioTitle: 'Mes projets',
     readMore: 'Voir le projet →',
@@ -141,6 +144,9 @@ const t = {
     aboutText2: 'My approach combines mathematical rigor and data pragmatism to deliver robust, explainable solutions.',
     metric1: 'Modeling',
     metric2: 'Analysis',
+    timelineLabel: 'Journey',
+    timelineTitle: 'Career & education timeline',
+    timelineIntro: 'A structured path across actuarial education, finance, and data science.',
     portfolioLabel: 'Portfolio',
     portfolioTitle: 'My projects',
     readMore: 'View project →',
@@ -762,6 +768,41 @@ function PostCard({ post, tr, lang }) {
 function HomePage({ tr, language }) {
   const projects = useMemo(() => getProjects().filter((p) => p.published).slice(0, 3), [])
   const testimonials = useMemo(() => getTestimonials().filter((item) => item.published).slice(0, 3), [])
+  const timelineItems = language === 'fr'
+    ? [
+      {
+        period: '2026 - Aujourd’hui',
+        title: 'Consultant actuariat & data',
+        subtitle: 'Missions en risk management et analytics décisionnelle',
+      },
+      {
+        period: '2024 - 2026',
+        title: 'Master Actuariat & Finance',
+        subtitle: 'Spécialisation en modélisation des risques, solvabilité et ALM',
+      },
+      {
+        period: '2022 - 2024',
+        title: 'Data science appliquée à la finance',
+        subtitle: 'Projets ML, scoring, détection de fraude et visualisation',
+      },
+    ]
+    : [
+      {
+        period: '2026 - Present',
+        title: 'Actuarial & data consultant',
+        subtitle: 'Assignments in risk management and decision analytics',
+      },
+      {
+        period: '2024 - 2026',
+        title: 'Master in Actuarial Science & Finance',
+        subtitle: 'Specialized in risk modeling, solvency, and ALM',
+      },
+      {
+        period: '2022 - 2024',
+        title: 'Data science applied to finance',
+        subtitle: 'ML projects, scoring, fraud detection, and visualization',
+      },
+    ]
   return (
     <main id="main-content" tabIndex={-1}>
       {/* Hero */}
@@ -828,6 +869,25 @@ function HomePage({ tr, language }) {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Timeline */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="mb-10">
+          <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.timelineLabel}</span>
+          <h2 className="mt-2 text-3xl font-bold text-zinc-900">{tr.timelineTitle}</h2>
+          <p className="mt-3 text-zinc-600 max-w-2xl">{tr.timelineIntro}</p>
+        </div>
+        <ol className="relative border-s border-zinc-200 ms-3 space-y-8">
+          {timelineItems.map((item) => (
+            <li key={`${item.period}-${item.title}`} className="ms-6">
+              <span className="absolute -start-1.5 mt-1.5 h-3 w-3 rounded-full bg-zinc-900" />
+              <p className="text-xs uppercase tracking-widest text-zinc-400">{item.period}</p>
+              <h3 className="mt-1 text-lg font-semibold text-zinc-900">{item.title}</h3>
+              <p className="mt-1 text-sm text-zinc-600">{item.subtitle}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* Featured projects */}

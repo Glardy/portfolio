@@ -91,6 +91,11 @@ src/
 - Respect du mode réduction des animations (`prefers-reduced-motion`).
 - Images des cartes projets/articles en `loading="lazy"` et `decoding="async"`.
 
+## Timeline carrière (Étape suivante)
+
+- Section timeline bilingue ajoutée sur la page d'accueil.
+- Affiche un parcours pro/formation en 3 étapes, lisible et orienté recrutement.
+
 ## Interface admin
 
 Accédez à `/admin` sur le site (local ou en ligne).
