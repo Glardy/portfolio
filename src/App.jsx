@@ -692,7 +692,7 @@ function ProjectCard({ project, index, tr, lang }) {
       className="group rounded-xl border border-zinc-200 bg-white hover:shadow-md transition-shadow overflow-hidden flex flex-col"
     >
       {project.image ? (
-        <img src={project.image} alt={title} className="w-full h-40 object-cover" />
+        <img src={project.image} alt={title} loading="lazy" decoding="async" className="w-full h-40 object-cover" />
       ) : (
         <div className={`${bg} px-6 pt-5 pb-3`}>
           <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{String(index + 1).padStart(2, '0')}</span>
@@ -729,7 +729,7 @@ function PostCard({ post, tr, lang }) {
       className="group rounded-xl border border-zinc-200 bg-white hover:shadow-md transition-shadow flex flex-col overflow-hidden"
     >
       {post.image ? (
-        <img src={post.image} alt={title} className="w-full h-36 object-cover" />
+        <img src={post.image} alt={title} loading="lazy" decoding="async" className="w-full h-36 object-cover" />
       ) : (
         <div className="px-5 pt-5 pb-3 border-b border-zinc-100 flex items-center justify-between gap-2">
           <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{category}</span>
@@ -763,7 +763,7 @@ function HomePage({ tr, language }) {
   const projects = useMemo(() => getProjects().filter((p) => p.published).slice(0, 3), [])
   const testimonials = useMemo(() => getTestimonials().filter((item) => item.published).slice(0, 3), [])
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div>
@@ -879,7 +879,7 @@ function HomePage({ tr, language }) {
 function PortfolioPage({ tr, language }) {
   const projects = useMemo(() => getProjects().filter((p) => p.published), [])
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
       <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.portfolioLabel}</span>
       <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-10">{tr.portfolioTitle}</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -901,7 +901,7 @@ function ProjectDetailPage({ tr, language }) {
   const category = language === 'fr' ? project.category?.fr ?? project.category : project.category?.en ?? project.categoryEn ?? project.category
   const content = language === 'fr' ? project.content?.fr ?? project.content : project.content?.en ?? project.contentEn ?? project.content
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
       <Link to="/portfolio" className="text-sm text-zinc-400 hover:text-zinc-800 transition-colors mb-8 inline-block">
         {tr.backPortfolio}
       </Link>
@@ -954,7 +954,7 @@ function SecretTestimonialPage({ tr, language }) {
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
       <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.testimonialsLabel}</span>
       <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-4">{tr.secretTitle}</h1>
       <p className="text-zinc-600 leading-relaxed max-w-2xl mb-10">{tr.secretIntro}</p>
@@ -1064,7 +1064,7 @@ function BlogPage({ tr, language }) {
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
       <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.blogLabel}</span>
       <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-8">{tr.blogTitle}</h1>
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -1180,7 +1180,7 @@ function PostDetailPage({ tr, language }) {
       .map(({ item }) => item)
   }, [slug, language, category, currentTags])
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
       <Link to="/blog" className="text-sm text-zinc-400 hover:text-zinc-800 transition-colors mb-8 inline-block">
         {tr.backBlog}
       </Link>
@@ -1247,7 +1247,7 @@ function ContactPage({ tr }) {
     }
   }
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
       <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.contactLabel}</span>
       <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-12">{tr.contactTitle}</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -1307,7 +1307,7 @@ function ContactPage({ tr }) {
 // ─── NotFoundPage ─────────────────────────────────────────────────────────────
 function NotFoundPage({ tr }) {
   return (
-    <main className="max-w-xl mx-auto px-4 py-32 text-center">
+    <main id="main-content" tabIndex={-1} className="max-w-xl mx-auto px-4 py-32 text-center">
       <p className="text-6xl font-bold text-zinc-200 mb-4">404</p>
       <p className="text-xl font-semibold text-zinc-800 mb-6">{tr ? tr.notFound : 'Page not found'}</p>
       <Link to="/" className="text-sm text-zinc-500 hover:text-zinc-900 underline">
@@ -1405,7 +1405,7 @@ function AdminPage({ tr, language }) {
 
   if (!authed) {
     return (
-      <main className="max-w-sm mx-auto px-4 py-32">
+      <main id="main-content" tabIndex={-1} className="max-w-sm mx-auto px-4 py-32">
         <h1 className="text-2xl font-bold text-zinc-900 mb-8 text-center">{tr.adminTitle}</h1>
         <form onSubmit={login} className="rounded-xl border border-zinc-200 bg-white p-8 space-y-4">
           <div>
@@ -1429,7 +1429,7 @@ function AdminPage({ tr, language }) {
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+    <main id="main-content" tabIndex={-1} className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-zinc-900">{tr.adminTitle}</h1>
         <button onClick={logout} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
@@ -1722,6 +1722,12 @@ export default function App() {
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:bg-white focus:border focus:border-zinc-300 focus:rounded-md focus:px-3 focus:py-2 focus:text-sm"
+      >
+        Aller au contenu / Skip to content
+      </a>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-zinc-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-6">
@@ -1734,7 +1740,7 @@ export default function App() {
           </Link>
 
           {/* Nav */}
-          <nav className="hidden md:flex items-center gap-1 ml-2">
+          <nav aria-label="Navigation principale" className="hidden md:flex items-center gap-1 ml-2">
             {navItems.map(({ labelFr, labelEn, to }) => (
               <NavLink
                 key={to}
@@ -1757,6 +1763,7 @@ export default function App() {
             {canInstall && (
               <button
                 onClick={installApp}
+                aria-label={tr.pwaInstall}
                 className="hidden sm:inline-flex text-xs font-medium border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 hover:bg-zinc-50 transition-colors"
               >
                 {tr.pwaInstall}
@@ -1765,6 +1772,7 @@ export default function App() {
             {/* Language toggle */}
             <button
               onClick={toggleLang}
+              aria-label={tr.langToggle}
               className="text-xs font-medium border border-zinc-200 rounded-lg px-3 py-1.5 text-zinc-500 hover:bg-zinc-50 transition-colors"
             >
               {tr.langToggle}

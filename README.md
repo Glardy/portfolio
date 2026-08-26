@@ -84,6 +84,13 @@ src/
   - `VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/mjyvbvgv`
 - Le formulaire n'envoie pas de données si l'endpoint est invalide : vérifiez la valeur dans `.env.local` en production.
 
+## Accessibilité + performance (Phase 6)
+
+- Lien d'évitement clavier en haut de page : `Skip to content`.
+- Focus visible renforcé (`:focus-visible`) pour navigation clavier.
+- Respect du mode réduction des animations (`prefers-reduced-motion`).
+- Images des cartes projets/articles en `loading="lazy"` et `decoding="async"`.
+
 ## Interface admin
 
 Accédez à `/admin` sur le site (local ou en ligne).
