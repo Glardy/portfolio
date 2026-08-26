@@ -55,6 +55,13 @@ src/
 | `/contact` | Formulaire de contact |
 | `/admin` | Interface d'administration (protégée) |
 
+## SEO (Phase 1)
+
+- `public/robots.txt` : autorise l'indexation publique et bloque `/admin` + `/page_secrete`.
+- `public/sitemap.xml` : liste les pages publiques (accueil, portfolio, blog, contact, détails).
+- Meta SEO dynamiques : titre, description, Open Graph, Twitter cards, canonical et schema.org dans `src/App.jsx`.
+- Base URL actuelle : `https://glardy.github.io/portfolio` (à remplacer quand vous aurez votre domaine).
+
 ## Interface admin
 
 Accédez à `/admin` sur le site (local ou en ligne).
