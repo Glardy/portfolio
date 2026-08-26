@@ -62,6 +62,13 @@ src/
 - Meta SEO dynamiques : titre, description, Open Graph, Twitter cards, canonical et schema.org dans `src/App.jsx`.
 - Base URL actuelle : `https://glardy.github.io/portfolio` (à remplacer quand vous aurez votre domaine).
 
+## PWA (Phase 3)
+
+- `public/manifest.webmanifest` : app installable (nom, icônes, thème, scope).
+- `public/sw.js` : cache applicatif pour navigation offline de base.
+- Enregistrement automatique du service worker dans `src/main.jsx`.
+- Bouton d'installation conditionnel dans l'en-tête (`beforeinstallprompt`) dans `src/App.jsx`.
+
 ## Interface admin
 
 Accédez à `/admin` sur le site (local ou en ligne).
