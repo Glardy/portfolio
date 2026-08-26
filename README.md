@@ -77,6 +77,13 @@ src/
 - Exemple en local : créer un fichier `.env.local` à la racine avec cette variable.
 - Quand vous aurez votre domaine perso, remplacez par votre domaine final (ex. `nom-prenom.com`).
 
+## Formulaire contact (Phase 5)
+
+- Intégration Formspree via `fetch` dans `src/App.jsx` (envoi réel + états succès/erreur).
+- Variable d'environnement :
+  - `VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/mjyvbvgv`
+- Le formulaire n'envoie pas de données si l'endpoint est invalide : vérifiez la valeur dans `.env.local` en production.
+
 ## Interface admin
 
 Accédez à `/admin` sur le site (local ou en ligne).
