@@ -6,7 +6,7 @@ Portfolio professionnel bilingue (FR/EN) — Actuariat · Risk Management · Dat
 
 - **React 19** + **Vite 8**
 - **Tailwind CSS 3**
-- **React Router v7** (HashRouter pour GitHub Pages)
+- **React Router v7** (BrowserRouter + fallback 404 pour GitHub Pages)
 - Rendu Markdown maison (sans dépendances)
 - CMS intégré (localStorage)
 
@@ -34,7 +34,7 @@ npm run deploy     # build + push vers GitHub Pages
 src/
 ├── App.jsx              # Shell, routes, toutes les pages
 ├── index.css            # Base Tailwind + Inter
-├── main.jsx             # Entry point + HashRouter
+├── main.jsx             # Entry point + router + analytics/PWA bootstrap
 ├── components/
 │   └── Markdown.jsx     # Rendu Markdown minimal
 └── data/
@@ -68,6 +68,14 @@ src/
 - `public/sw.js` : cache applicatif pour navigation offline de base.
 - Enregistrement automatique du service worker dans `src/main.jsx`.
 - Bouton d'installation conditionnel dans l'en-tête (`beforeinstallprompt`) dans `src/App.jsx`.
+
+## Analytics (Phase 4)
+
+- Intégration Plausible compatible SPA (pageview à chaque changement de route) dans `src/main.jsx` et `src/App.jsx`.
+- Variable d'environnement requise :
+  - `VITE_PLAUSIBLE_DOMAIN=glardy.github.io`
+- Exemple en local : créer un fichier `.env.local` à la racine avec cette variable.
+- Quand vous aurez votre domaine perso, remplacez par votre domaine final (ex. `nom-prenom.com`).
 
 ## Interface admin
 
