@@ -1673,6 +1673,14 @@ export default function App() {
     schema.textContent = JSON.stringify(structuredData)
   }, [language, location.pathname, tr.badge, tr.blogTitle, tr.contactText, tr.contactTitle, tr.heroText, tr.heroTitle, tr.portfolioTitle])
 
+  useEffect(() => {
+    const cleanPath = (location.pathname || '/').replace(/\/+$/, '') || '/'
+    const isHiddenPage = cleanPath.startsWith('/admin') || cleanPath.startsWith('/page_secrete')
+    if (isHiddenPage || typeof window.plausible !== 'function') return
+    const pageUrl = `${SITE_URL}${cleanPath}${location.search || ''}`
+    window.plausible('pageview', { u: pageUrl })
+  }, [location.pathname, location.search])
+
   return (
     <>
       {/* Header */}
