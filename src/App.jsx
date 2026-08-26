@@ -6,6 +6,7 @@ import { getPosts, savePosts, getPostBySlug } from './data/posts'
 import { getTestimonials, saveTestimonials } from './data/testimonials'
 
 const ADMIN_PASSWORD = 'portfolio2026'
+const FORMSPREE_ENDPOINT = import.meta.env.VITE_FORMSPREE_ENDPOINT || 'https://formspree.io/f/mjyvbvgv'
 
 const allCategories = {
   fr: ['Tous', 'Actuariat', 'Data', 'Finance'],
@@ -69,6 +70,9 @@ const t = {
     formEmail: 'Votre email',
     formMessage: 'Votre message',
     formSubmit: 'Envoyer le message',
+    formSubmitting: 'Envoi en cours...',
+    formSuccess: '✓ Message envoyé. Merci, je vous répondrai rapidement.',
+    formError: 'Erreur lors de l’envoi. Merci de réessayer dans quelques instants.',
     backPortfolio: '← Retour au portfolio',
     backBlog: '← Retour au blog',
     notFound: 'Page introuvable',
@@ -172,6 +176,9 @@ const t = {
     formEmail: 'Your email',
     formMessage: 'Your message',
     formSubmit: 'Send message',
+    formSubmitting: 'Sending...',
+    formSuccess: '✓ Message sent. Thank you, I will get back to you soon.',
+    formError: 'Sending failed. Please try again in a few moments.',
     backPortfolio: '← Back to portfolio',
     backBlog: '← Back to blog',
     notFound: 'Page not found',
@@ -1210,12 +1217,34 @@ function PostDetailPage({ tr, language }) {
 
 // ─── ContactPage ──────────────────────────────────────────────────────────────
 function ContactPage({ tr }) {
-  const [sent, setSent] = useState(false)
+  const [status, setStatus] = useState('idle')
   const [form, setForm] = useState({ name: '', email: '', message: '' })
   const handle = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    setSent(true)
+    setStatus('submitting')
+    try {
+      const response = await fetch(FORMSPREE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          message: form.message,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error(`Formspree response: ${response.status}`)
+      }
+      setStatus('success')
+      setForm({ name: '', email: '', message: '' })
+    } catch (error) {
+      console.error(error)
+      setStatus('error')
+    }
   }
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
@@ -1238,27 +1267,37 @@ function ContactPage({ tr }) {
         </div>
         {/* Right */}
         <div className="rounded-xl border border-zinc-200 bg-white p-8">
-          {sent ? (
-            <p className="text-zinc-700 text-center py-8">✓ Message envoyé / Message sent</p>
-          ) : (
-            <form onSubmit={submit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formName}</label>
-                <input name="name" value={form.name} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formEmail}</label>
-                <input name="email" type="email" value={form.email} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formMessage}</label>
-                <textarea name="message" value={form.message} onChange={handle} rows={5} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
-              </div>
-              <button type="submit" className="w-full bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700 transition-colors">
-                {tr.formSubmit}
-              </button>
-            </form>
-          )}
+          <form onSubmit={submit} className="space-y-4">
+            {status === 'success' && (
+              <p className="text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2" role="status">
+                {tr.formSuccess}
+              </p>
+            )}
+            {status === 'error' && (
+              <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2" role="alert">
+                {tr.formError}
+              </p>
+            )}
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formName}</label>
+              <input name="name" value={form.name} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formEmail}</label>
+              <input name="email" type="email" value={form.email} onChange={handle} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-widest text-zinc-400 mb-1">{tr.formMessage}</label>
+              <textarea name="message" value={form.message} onChange={handle} rows={5} required className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300" />
+            </div>
+            <button
+              type="submit"
+              disabled={status === 'submitting'}
+              className="w-full bg-zinc-900 text-white text-sm font-medium rounded-lg px-5 py-2.5 hover:bg-zinc-700 transition-colors disabled:opacity-60"
+            >
+              {status === 'submitting' ? tr.formSubmitting : tr.formSubmit}
+            </button>
+          </form>
         </div>
       </div>
     </main>
