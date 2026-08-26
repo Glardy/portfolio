@@ -1,8 +1,9 @@
-﻿import { NavLink, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom'
+import { NavLink, Route, Routes, Link, useParams } from 'react-router-dom'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import Markdown from './components/Markdown'
 import { getProjects, saveProjects, getProjectBySlug } from './data/projects'
 import { getPosts, savePosts, getPostBySlug } from './data/posts'
+import { getTestimonials, saveTestimonials } from './data/testimonials'
 
 const ADMIN_PASSWORD = 'portfolio2026'
 
@@ -43,6 +44,15 @@ const t = {
     blogSortOldest: 'Plus anciens',
     blogNoResults: 'Aucun article trouvé.',
     readArticle: 'Lire l\'article →',
+    testimonialsLabel: 'Témoignages',
+    testimonialsTitle: 'Ce que disent les personnes avec qui je travaille',
+    testimonialsIntro: 'Des retours validés et publiés après modération.',
+    testimonialsEmpty: 'Les témoignages validés apparaîtront ici prochainement.',
+    secretTitle: 'Page de témoignage',
+    secretIntro: 'Merci de laisser un retour court et sincère. Le témoignage sera modéré avant publication.',
+    secretSubmit: 'Envoyer le témoignage',
+    secretSuccess: 'Merci ! Votre témoignage a bien été enregistré et sera modéré avant publication.',
+    secretNote: 'Nom, fonction, entreprise et message sont visibles par l’équipe de modération.',
     contactLabel: 'Contact',
     contactTitle: 'Travaillons ensemble',
     contactText: 'Vous avez un projet, une question ou souhaitez simplement échanger ? N\'hésitez pas à me contacter.',
@@ -83,6 +93,20 @@ const t = {
     adminFieldTags: 'Tags (virgule)',
     adminFieldSummary: 'Résumé (FR)',
     adminFieldSummaryEn: 'Résumé (EN)',
+    adminTestimonials: 'Témoignages',
+    adminNewTestimonial: 'Nouveau témoignage',
+    adminFieldAuthorName: 'Nom + prénom',
+    adminFieldRole: 'Fonction (FR)',
+    adminFieldRoleEn: 'Fonction (EN)',
+    adminFieldCompany: 'Entreprise (FR)',
+    adminFieldCompanyEn: 'Entreprise (EN)',
+    adminFieldRelation: 'Relation (FR)',
+    adminFieldRelationEn: 'Relation (EN)',
+    adminFieldQuote: 'Témoignage (FR)',
+    adminFieldQuoteEn: 'Témoignage (EN)',
+    adminFieldRating: 'Note',
+    adminNoTestimonialsPending: 'Aucun témoignage en attente.',
+    adminNoTestimonialsPublished: 'Aucun témoignage publié.',
     adminConfirmDelete: 'Supprimer cet élément ?',
   },
   en: {
@@ -116,6 +140,15 @@ const t = {
     blogSortOldest: 'Oldest first',
     blogNoResults: 'No articles found.',
     readArticle: 'Read article →',
+    testimonialsLabel: 'Testimonials',
+    testimonialsTitle: 'What people say about working with me',
+    testimonialsIntro: 'Validated feedback published after moderation.',
+    testimonialsEmpty: 'Validated testimonials will appear here soon.',
+    secretTitle: 'Testimonial page',
+    secretIntro: 'Please share a short, honest review. It will be moderated before publication.',
+    secretSubmit: 'Submit testimonial',
+    secretSuccess: 'Thank you! Your testimonial has been saved and will be moderated before publication.',
+    secretNote: 'Name, role, company and message are visible to the moderation team.',
     contactLabel: 'Contact',
     contactTitle: 'Let\'s work together',
     contactText: 'Have a project, a question, or just want to chat? Feel free to reach out.',
@@ -156,6 +189,20 @@ const t = {
     adminFieldTags: 'Tags (comma)',
     adminFieldSummary: 'Summary (FR)',
     adminFieldSummaryEn: 'Summary (EN)',
+    adminTestimonials: 'Testimonials',
+    adminNewTestimonial: 'New testimonial',
+    adminFieldAuthorName: 'Full name',
+    adminFieldRole: 'Role (FR)',
+    adminFieldRoleEn: 'Role (EN)',
+    adminFieldCompany: 'Company (FR)',
+    adminFieldCompanyEn: 'Company (EN)',
+    adminFieldRelation: 'Relation (FR)',
+    adminFieldRelationEn: 'Relation (EN)',
+    adminFieldQuote: 'Testimonial (FR)',
+    adminFieldQuoteEn: 'Testimonial (EN)',
+    adminFieldRating: 'Rating',
+    adminNoTestimonialsPending: 'No testimonials pending.',
+    adminNoTestimonialsPublished: 'No published testimonials.',
     adminConfirmDelete: 'Delete this item?',
   },
 }
@@ -234,6 +281,57 @@ function AdminList({ items, onEdit, onDelete, tr, lang }) {
   )
 }
 
+function TestimonialAdminList({ items, onEdit, onDelete, tr, lang, emptyText }) {
+  if (!items.length) {
+    return (
+      <div className="rounded-xl border border-dashed border-zinc-200 bg-white px-4 py-6 text-sm text-zinc-400">
+        {emptyText}
+      </div>
+    )
+  }
+  return (
+    <ul className="rounded-xl border border-zinc-200 bg-white divide-y divide-zinc-100 overflow-hidden">
+      {items.map((item) => {
+        const role = item.role?.[lang] ?? item.role
+        const company = item.company?.[lang] ?? item.company
+        const quote = item.quote?.[lang] ?? item.quote
+        return (
+          <li key={item.id} className="px-4 py-4 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${item.published ? 'bg-emerald-400' : 'bg-zinc-300'}`} />
+                <span className="text-sm font-semibold text-zinc-900 truncate">{item.authorName}</span>
+              </div>
+              <p className="text-xs text-zinc-500">
+                {[role, company].filter(Boolean).join(' · ')}
+              </p>
+              <p className="text-sm text-zinc-600 mt-2 max-h-12 overflow-hidden">“{quote}”</p>
+              <div className="mt-2 flex items-center gap-3 text-xs text-zinc-400">
+                <span>{stars(item.rating)}</span>
+                {item.date && <span>{fmtDate(item.date, lang)}</span>}
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => onEdit(item)}
+                className="text-xs border border-zinc-200 rounded-lg px-3 py-1 text-zinc-600 hover:bg-zinc-50"
+              >
+                {tr.adminEdit}
+              </button>
+              <button
+                onClick={() => onDelete(item.id)}
+                className="text-xs border border-red-200 rounded-lg px-3 py-1 text-red-500 hover:bg-red-50"
+              >
+                {tr.adminDelete}
+              </button>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 // flatten {fr,en} objects to flat fields for the editor form
 function flattenForEditor(item) {
   if (!item) return null
@@ -262,6 +360,65 @@ function composeFromFlat(flat) {
     summary: { fr: flat.summary || '', en: flat.summaryEn || '' },
     content: { fr: flat.content || '', en: flat.contentEn || '' },
   }
+}
+
+function flattenTestimonial(item) {
+  if (!item) return null
+  return {
+    ...item,
+    authorName: item.authorName || '',
+    role: item.role?.fr ?? item.role ?? '',
+    roleEn: item.role?.en ?? item.roleEn ?? '',
+    company: item.company?.fr ?? item.company ?? '',
+    companyEn: item.company?.en ?? item.companyEn ?? '',
+    relation: item.relation?.fr ?? item.relation ?? '',
+    relationEn: item.relation?.en ?? item.relationEn ?? '',
+    quote: item.quote?.fr ?? item.quote ?? '',
+    quoteEn: item.quote?.en ?? item.quoteEn ?? '',
+    rating: item.rating ?? 5,
+  }
+}
+
+function composeTestimonialFromFlat(flat) {
+  return {
+    ...flat,
+    role: { fr: flat.role || '', en: flat.roleEn || '' },
+    company: { fr: flat.company || '', en: flat.companyEn || '' },
+    relation: { fr: flat.relation || '', en: flat.relationEn || '' },
+    quote: { fr: flat.quote || '', en: flat.quoteEn || '' },
+    rating: Number(flat.rating || 5),
+  }
+}
+
+function stars(rating) {
+  return Array.from({ length: 5 }, (_, i) => (i < Number(rating) ? '★' : '☆')).join('')
+}
+
+function TestimonialCard({ testimonial, tr, lang }) {
+  const role = testimonial.role?.[lang] ?? testimonial.role
+  const company = testimonial.company?.[lang] ?? testimonial.company
+  const relation = testimonial.relation?.[lang] ?? testimonial.relation
+  const quote = testimonial.quote?.[lang] ?? testimonial.quote
+  return (
+    <figure className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-zinc-900 truncate">{testimonial.authorName}</p>
+          <p className="text-xs text-zinc-500 mt-1">
+            {[role, company].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-xs text-zinc-400">{stars(testimonial.rating)}</p>
+          {relation && <p className="text-[11px] uppercase tracking-widest text-zinc-400 mt-1">{relation}</p>}
+        </div>
+      </div>
+      <blockquote className="text-sm leading-relaxed text-zinc-600">“{quote}”</blockquote>
+      <figcaption className="text-xs text-zinc-400">
+        {testimonial.date ? fmtDate(testimonial.date, lang) : ''}
+      </figcaption>
+    </figure>
+  )
 }
 
 // ─── PostEditor ───────────────────────────────────────────────────────────────
@@ -362,6 +519,63 @@ function ProjectEditor({ initial, onSave, onCancel, tr }) {
             {tr.adminSave}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function TestimonialEditor({ initial, onSave, onCancel, tr, showStatus = true, submitLabel, compact = false }) {
+  const empty = {
+    authorName: '',
+    role: '',
+    roleEn: '',
+    company: '',
+    companyEn: '',
+    relation: '',
+    relationEn: '',
+    quote: '',
+    quoteEn: '',
+    rating: 5,
+    date: new Date().toISOString().slice(0, 10),
+    published: false,
+  }
+  const [form, setForm] = useState(flattenTestimonial(initial) || empty)
+  const handle = (e) => {
+    const { name, value, type, checked } = e.target
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }))
+  }
+  const save = () => onSave(composeTestimonialFromFlat({ ...form, rating: Number(form.rating || 5) }))
+  const fieldGrid = compact ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'grid grid-cols-1 sm:grid-cols-2 gap-4'
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className={fieldGrid}>
+        <Field label={tr.adminFieldAuthorName} name="authorName" value={form.authorName} onChange={handle} fullWidth />
+        <Field label={tr.adminFieldDate} name="date" value={form.date} onChange={handle} />
+        <Field label={tr.adminFieldRole} name="role" value={form.role} onChange={handle} />
+        <Field label={tr.adminFieldRoleEn} name="roleEn" value={form.roleEn} onChange={handle} />
+        <Field label={tr.adminFieldCompany} name="company" value={form.company} onChange={handle} />
+        <Field label={tr.adminFieldCompanyEn} name="companyEn" value={form.companyEn} onChange={handle} />
+        <Field label={tr.adminFieldRelation} name="relation" value={form.relation} onChange={handle} />
+        <Field label={tr.adminFieldRelationEn} name="relationEn" value={form.relationEn} onChange={handle} />
+        <Field label={tr.adminFieldRating} name="rating" value={form.rating} onChange={handle} />
+        <Field label={tr.adminFieldQuote} name="quote" value={form.quote} onChange={handle} textarea rows={4} fullWidth />
+        <Field label={tr.adminFieldQuoteEn} name="quoteEn" value={form.quoteEn} onChange={handle} textarea rows={4} fullWidth />
+      </div>
+      {showStatus && (
+        <div className="mt-4 flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+            <input type="checkbox" name="published" checked={form.published} onChange={handle} className="accent-zinc-800" />
+            {tr.adminPublished}
+          </label>
+        </div>
+      )}
+      <div className="mt-4 flex justify-end gap-3">
+        <button onClick={onCancel} className="text-sm border border-zinc-200 rounded-lg px-4 py-2 text-zinc-500 hover:bg-zinc-50">
+          Annuler / Cancel
+        </button>
+        <button onClick={save} className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700">
+          {submitLabel || tr.adminSave}
+        </button>
       </div>
     </div>
   )
@@ -493,6 +707,7 @@ function PostCard({ post, tr, lang }) {
 // ─── HomePage ─────────────────────────────────────────────────────────────────
 function HomePage({ tr, language }) {
   const projects = useMemo(() => getProjects().filter((p) => p.published).slice(0, 3), [])
+  const testimonials = useMemo(() => getTestimonials().filter((item) => item.published).slice(0, 3), [])
   return (
     <main>
       {/* Hero */}
@@ -578,6 +793,30 @@ function HomePage({ tr, language }) {
           ))}
         </div>
       </section>
+
+      {/* Testimonials */}
+      <section className="bg-zinc-50 border-y border-zinc-200 py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.testimonialsLabel}</span>
+              <h2 className="mt-2 text-3xl font-bold text-zinc-900">{tr.testimonialsTitle}</h2>
+            </div>
+            <p className="text-sm text-zinc-500 max-w-md text-right hidden md:block">{tr.testimonialsIntro}</p>
+          </div>
+          {testimonials.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
+              {tr.testimonialsEmpty}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonials.map((testimonial) => (
+                <TestimonialCard key={testimonial.id} testimonial={testimonial} tr={tr} lang={language} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   )
 }
@@ -636,6 +875,65 @@ function ProjectDetailPage({ tr, language }) {
         >
           {tr.ctaContact}
         </Link>
+      </div>
+    </main>
+  )
+}
+
+// ─── SecretTestimonialPage ─────────────────────────────────────────────────────
+function SecretTestimonialPage({ tr, language }) {
+  const [sent, setSent] = useState(false)
+
+  const save = (data) => {
+    const existing = getTestimonials()
+    const next = [
+      ...existing,
+      {
+        ...data,
+        id: Date.now(),
+        published: false,
+        source: 'page_secrete',
+      },
+    ]
+    saveTestimonials(next)
+    setSent(true)
+  }
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+      <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.testimonialsLabel}</span>
+      <h1 className="mt-2 text-3xl font-bold text-zinc-900 mb-4">{tr.secretTitle}</h1>
+      <p className="text-zinc-600 leading-relaxed max-w-2xl mb-10">{tr.secretIntro}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2">
+          {sent ? (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-emerald-900">
+              <p className="font-semibold mb-2">✓</p>
+              <p className="text-sm leading-relaxed">{tr.secretSuccess}</p>
+            </div>
+          ) : (
+            <TestimonialEditor
+              tr={tr}
+              onSave={save}
+              onCancel={() => setSent(false)}
+              showStatus={false}
+              submitLabel={tr.secretSubmit}
+            />
+          )}
+        </div>
+        <aside className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-widest text-zinc-400 mb-3">{tr.testimonialsIntro}</p>
+          <p className="text-sm text-zinc-600 leading-relaxed mb-6">{tr.secretNote}</p>
+          <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4 text-sm text-zinc-600">
+            <p className="font-semibold text-zinc-900 mb-2">{language === 'fr' ? 'À fournir' : 'Required'}</p>
+            <ul className="space-y-2 text-sm">
+              <li>• {language === 'fr' ? 'Nom et prénom' : 'Full name'}</li>
+              <li>• {language === 'fr' ? 'Fonction / rôle' : 'Role / function'}</li>
+              <li>• {language === 'fr' ? 'Entreprise ou organisation' : 'Company or organization'}</li>
+              <li>• {language === 'fr' ? 'Message de retour' : 'Feedback message'}</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </main>
   )
@@ -829,10 +1127,13 @@ function AdminPage({ tr, language }) {
   const [tab, setTab] = useState('posts')
   const [posts, setPosts] = useState(() => getPosts())
   const [projects, setProjects] = useState(() => getProjects())
+  const [testimonials, setTestimonials] = useState(() => getTestimonials())
   const [editingPost, setEditingPost] = useState(null)
   const [editingProject, setEditingProject] = useState(null)
+  const [editingTestimonial, setEditingTestimonial] = useState(null)
   const [newPost, setNewPost] = useState(false)
   const [newProject, setNewProject] = useState(false)
+  const [newTestimonial, setNewTestimonial] = useState(false)
 
   const login = (e) => {
     e.preventDefault()
@@ -886,6 +1187,24 @@ function AdminPage({ tr, language }) {
     if (editingProject && editingProject.slug === slug) setEditingProject(null)
   }
 
+  const saveTestimonial = (data) => {
+    const updated = testimonials.some((item) => String(item.id) === String(data.id))
+      ? testimonials.map((item) => (String(item.id) === String(data.id) ? data : item))
+      : [...testimonials, { ...data, id: data.id || Date.now() }]
+    saveTestimonials(updated)
+    setTestimonials(updated)
+    setEditingTestimonial(null)
+    setNewTestimonial(false)
+  }
+
+  const deleteTestimonial = (id) => {
+    if (!window.confirm(tr.adminConfirmDelete)) return
+    const updated = testimonials.filter((item) => String(item.id) !== String(id))
+    saveTestimonials(updated)
+    setTestimonials(updated)
+    if (editingTestimonial && String(editingTestimonial.id) === String(id)) setEditingTestimonial(null)
+  }
+
   if (!authed) {
     return (
       <main className="max-w-sm mx-auto px-4 py-32">
@@ -922,7 +1241,7 @@ function AdminPage({ tr, language }) {
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-8">
-        {['posts', 'projects'].map((tabKey) => (
+        {['posts', 'projects', 'testimonials'].map((tabKey) => (
           <button
             key={tabKey}
             onClick={() => setTab(tabKey)}
@@ -932,7 +1251,7 @@ function AdminPage({ tr, language }) {
                 : 'border-zinc-200 text-zinc-500 hover:border-zinc-400'
             }`}
           >
-            {tabKey === 'posts' ? tr.adminPosts : tr.adminProjects}
+            {tabKey === 'posts' ? tr.adminPosts : tabKey === 'projects' ? tr.adminProjects : tr.adminTestimonials}
           </button>
         ))}
       </div>
@@ -979,6 +1298,59 @@ function AdminPage({ tr, language }) {
               initial={editingProject}
               onSave={saveProject}
               onCancel={() => { setEditingProject(null); setNewProject(false) }}
+              tr={tr}
+            />
+          )}
+        </div>
+      )}
+
+      {tab === 'testimonials' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">{tr.adminTestimonials}</span>
+            <button
+              onClick={() => { setNewTestimonial(true); setEditingTestimonial(null) }}
+              className="text-sm bg-zinc-900 text-white rounded-lg px-4 py-2 hover:bg-zinc-700"
+            >
+              {tr.adminNewTestimonial}
+            </button>
+          </div>
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">À modérer</span>
+                <span className="text-xs text-zinc-400">{testimonials.filter((item) => !item.published).length}</span>
+              </div>
+              <TestimonialAdminList
+                items={testimonials.filter((item) => !item.published)}
+                onEdit={(item) => { setEditingTestimonial(item); setNewTestimonial(false) }}
+                onDelete={deleteTestimonial}
+                tr={tr}
+                lang={language}
+                emptyText={tr.adminNoTestimonialsPending}
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">Publiés</span>
+                <span className="text-xs text-zinc-400">{testimonials.filter((item) => item.published).length}</span>
+              </div>
+              <TestimonialAdminList
+                items={testimonials.filter((item) => item.published)}
+                onEdit={(item) => { setEditingTestimonial(item); setNewTestimonial(false) }}
+                onDelete={deleteTestimonial}
+                tr={tr}
+                lang={language}
+                emptyText={tr.adminNoTestimonialsPublished}
+              />
+            </div>
+          </div>
+          {(newTestimonial || editingTestimonial) && (
+            <TestimonialEditor
+              key={editingTestimonial ? editingTestimonial.id : 'new'}
+              initial={editingTestimonial}
+              onSave={saveTestimonial}
+              onCancel={() => { setEditingTestimonial(null); setNewTestimonial(false) }}
               tr={tr}
             />
           )}
@@ -1062,6 +1434,7 @@ export default function App() {
         <Route path="/blog" element={<BlogPage tr={tr} language={language} />} />
         <Route path="/blog/:slug" element={<PostDetailPage tr={tr} language={language} />} />
         <Route path="/contact" element={<ContactPage tr={tr} />} />
+        <Route path="/page_secrete" element={<SecretTestimonialPage tr={tr} language={language} />} />
         <Route path="/admin" element={<AdminPage tr={tr} language={language} />} />
         <Route path="*" element={<NotFoundPage tr={tr} />} />
       </Routes>

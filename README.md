@@ -51,6 +51,7 @@ src/
 | `/portfolio/:slug` | Détail d'un projet |
 | `/blog` | Liste des articles (recherche + filtres) |
 | `/blog/:slug` | Détail d'un article |
+| `/page_secrete` | Formulaire privé de témoignages |
 | `/contact` | Formulaire de contact |
 | `/admin` | Interface d'administration (protégée) |
 
@@ -63,6 +64,7 @@ Accédez à `/admin` sur le site (local ou en ligne).
 
 L'admin permet de :
 - **Créer, modifier, supprimer** des projets et des articles
+- **Créer, modérer et publier** des témoignages
 - **Publier / mettre en brouillon** chaque élément
 - **Rédiger le contenu en Markdown** (FR et EN simultanément)
 
